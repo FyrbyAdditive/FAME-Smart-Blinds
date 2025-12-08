@@ -1,3 +1,4 @@
+![FAME Smart Blinds Icon](https://raw.githubusercontent.com/FyrbyAdditive/FAME-Smart-Blinds/refs/heads/main/ios/FAME%20Smart%20Blinds/Assets.xcassets/AppIcon.appiconset/GB128.png)
 # FAME Smart Blinds
 
 An open smart blind project with Home Assistant integration.
@@ -11,7 +12,7 @@ An open smart blind project with Home Assistant integration.
 ## Features
 
 - **Home Assistant Integration** via MQTT auto-discovery
-- **iOS Companion App** for setup and direct control
+- **iOS, Android and macOS Companion Apps** for setup and direct control
 - **BLE Provisioning** for WiFi configuration
 - **HTTP REST API** for local network control
 - **USB Serial Debugging** with categorized logging

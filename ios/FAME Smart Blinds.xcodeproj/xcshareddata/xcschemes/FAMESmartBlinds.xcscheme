@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "917C9CE9ED1645F7718E2F6E"
-               BuildableName = "FAMESmartBlinds.app"
+               BuildableName = "FAME Smart Blinds.app"
                BlueprintName = "FAME Smart Blinds"
-               ReferencedContainer = "container:FAMESmartBlinds.xcodeproj">
+               ReferencedContainer = "container:FAME Smart Blinds.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -31,9 +31,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "917C9CE9ED1645F7718E2F6E"
-            BuildableName = "FAMESmartBlinds.app"
+            BuildableName = "FAME Smart Blinds.app"
             BlueprintName = "FAME Smart Blinds"
-            ReferencedContainer = "container:FAMESmartBlinds.xcodeproj">
+            ReferencedContainer = "container:FAME Smart Blinds.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <Testables>
@@ -54,9 +54,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "917C9CE9ED1645F7718E2F6E"
-            BuildableName = "FAMESmartBlinds.app"
+            BuildableName = "FAME Smart Blinds.app"
             BlueprintName = "FAME Smart Blinds"
-            ReferencedContainer = "container:FAMESmartBlinds.xcodeproj">
+            ReferencedContainer = "container:FAME Smart Blinds.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -71,9 +71,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "917C9CE9ED1645F7718E2F6E"
-            BuildableName = "FAMESmartBlinds.app"
+            BuildableName = "FAME Smart Blinds.app"
             BlueprintName = "FAME Smart Blinds"
-            ReferencedContainer = "container:FAMESmartBlinds.xcodeproj">
+            ReferencedContainer = "container:FAME Smart Blinds.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

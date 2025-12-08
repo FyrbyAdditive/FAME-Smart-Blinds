@@ -19,9 +19,11 @@ firmware/.piolibdeps/
 *.exe
 
 # iOS
+ios/build/
 ios/GeekyBlinders/build/
 ios/GeekyBlinders/DerivedData/
 ios/GeekyBlinders/Pods/
+ios/ExportOptions.plist
 *.pbxuser
 *.mode1v3
 *.mode2v3
