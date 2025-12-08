@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary brand colors (matching iOS blue-cyan) -->
+    <color name="blue_primary">#007AFF</color>
+    <color name="blue_secondary">#5AC8FA</color>
+    <color name="cyan_accent">#32ADE6</color>
+
+    <!-- Status colors -->
+    <color name="status_connected">#34C759</color>
+    <color name="status_disconnected">#8E8E93</color>
+    <color name="status_warning">#FF9500</color>
+    <color name="status_error">#FF3B30</color>
+
+    <!-- Background colors -->
+    <color name="background_light">#FFFFFF</color>
+    <color name="background_dark">#000000</color>
+    <color name="surface_light">#F2F2F7</color>
+    <color name="surface_dark">#1C1C1E</color>
+
+    <!-- Text colors -->
+    <color name="text_primary_light">#000000</color>
+    <color name="text_primary_dark">#FFFFFF</color>
+    <color name="text_secondary_light">#8E8E93</color>
+    <color name="text_secondary_dark">#8E8E93</color>
+</resources>

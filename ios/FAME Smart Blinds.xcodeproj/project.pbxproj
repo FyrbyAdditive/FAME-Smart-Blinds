@@ -1,0 +1,449 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 63;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0330A2A16B87FEE3651B42C8 /* DeviceDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B35C6B079F98FF830BBB7BC /* DeviceDiscovery.swift */; };
+		2223CAA62EE2091200BE7074 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2223CAA52EE2091200BE7074 /* AboutView.swift */; };
+		2EA3C4D82A6BC92C7D366D7C /* DeviceControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F04771F83E6586A5249848A8 /* DeviceControlView.swift */; };
+		3B8E711B609221A1A037DC15 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF9610AAAC80290BDA24165D /* ContentView.swift */; };
+		77E8B69CA985334F4F0A11A7 /* SetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A53D414B528ABE2C7FA02981 /* SetupView.swift */; };
+		8EB823817C9BAD7E05C18B9F /* DeviceSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 611E4021B8AD18DEC95D8BA6 /* DeviceSettingsView.swift */; };
+		918F829E343DE91CA4D6960C /* DeviceRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C0E3C777D21F4B37A257593 /* DeviceRegistry.swift */; };
+		A36C44262446E34C32F07C75 /* FAMESmartBlindsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AC7163DD235023F6C13489A /* FAMESmartBlindsApp.swift */; };
+		ASSETS0001RESOURCES00001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 22EDA7F22EDD1B9C0025CDA6 /* Assets.xcassets */; };
+		BE658E27AFA7E43E3C10DC95 /* BLEManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C48D1077F7C549269D32F49 /* BLEManager.swift */; };
+		D3CDBDE8837419A7FC79C6E2 /* HTTPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 239F8D28B52D3163C7EB0929 /* HTTPClient.swift */; };
+		D518A293E6C4DDB93F49DB99 /* BlindDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED790236B0876F07EE8DC2B6 /* BlindDevice.swift */; };
+		E1DC1619AAD25D3867661F43 /* CalibrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EE33A1BC3AE08D3E18BF5D8 /* CalibrationView.swift */; };
+		FB124E2CF1BC1C3EF0C0D714 /* DeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F60D75CAF9228A75B7A683A /* DeviceListView.swift */; };
+		FEE78385BB6A104F1EA71DE8 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 956EC08E7727CEA97721AA43 /* Constants.swift */; };
+		SSE0001BUILDFILE00001 /* SSEClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = SSE0001FILEREF00001 /* SSEClient.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0EE33A1BC3AE08D3E18BF5D8 /* CalibrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationView.swift; sourceTree = "<group>"; };
+		2223CAA52EE2091200BE7074 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
+		22EDA7F22EDD1B9C0025CDA6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		239F8D28B52D3163C7EB0929 /* HTTPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPClient.swift; sourceTree = "<group>"; };
+		3C0E3C777D21F4B37A257593 /* DeviceRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceRegistry.swift; sourceTree = "<group>"; };
+		3C48D1077F7C549269D32F49 /* BLEManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEManager.swift; sourceTree = "<group>"; };
+		520DBA0867FF44EB943EBE52 /* FAMESmartBlinds.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FAMESmartBlinds.entitlements; sourceTree = "<group>"; };
+		5F60D75CAF9228A75B7A683A /* DeviceListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceListView.swift; sourceTree = "<group>"; };
+		611E4021B8AD18DEC95D8BA6 /* DeviceSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceSettingsView.swift; sourceTree = "<group>"; };
+		6AC7163DD235023F6C13489A /* FAMESmartBlindsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FAMESmartBlindsApp.swift; sourceTree = "<group>"; };
+		956EC08E7727CEA97721AA43 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
+		9B35C6B079F98FF830BBB7BC /* DeviceDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceDiscovery.swift; sourceTree = "<group>"; };
+		A53D414B528ABE2C7FA02981 /* SetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupView.swift; sourceTree = "<group>"; };
+		A8333C37F54BA6CCED0EC174 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		DF9610AAAC80290BDA24165D /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		ED790236B0876F07EE8DC2B6 /* BlindDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlindDevice.swift; sourceTree = "<group>"; };
+		F04771F83E6586A5249848A8 /* DeviceControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceControlView.swift; sourceTree = "<group>"; };
+		FE3531DB8754F0391CFA8409 /* FAME Smart Blinds.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "FAME Smart Blinds.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		SSE0001FILEREF00001 /* SSEClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSEClient.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		1BB6EBC2C903F240CC5BCE4A /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				ED790236B0876F07EE8DC2B6 /* BlindDevice.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		1EDC702E2ECA47A1331FEAF6 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				3C48D1077F7C549269D32F49 /* BLEManager.swift */,
+				9B35C6B079F98FF830BBB7BC /* DeviceDiscovery.swift */,
+				3C0E3C777D21F4B37A257593 /* DeviceRegistry.swift */,
+				239F8D28B52D3163C7EB0929 /* HTTPClient.swift */,
+				SSE0001FILEREF00001 /* SSEClient.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		35FE732197F8BE03797DFAB2 = {
+			isa = PBXGroup;
+			children = (
+				F493005201AA675FAA59CED9 /* FAME Smart Blinds */,
+				805A26AC25C358702F052DAA /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		774C86CA333161F1364D982B /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				956EC08E7727CEA97721AA43 /* Constants.swift */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		805A26AC25C358702F052DAA /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				FE3531DB8754F0391CFA8409 /* FAME Smart Blinds.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		DD5A8042173DCC4560F5BA2B /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				0EE33A1BC3AE08D3E18BF5D8 /* CalibrationView.swift */,
+				F04771F83E6586A5249848A8 /* DeviceControlView.swift */,
+				5F60D75CAF9228A75B7A683A /* DeviceListView.swift */,
+				611E4021B8AD18DEC95D8BA6 /* DeviceSettingsView.swift */,
+				A53D414B528ABE2C7FA02981 /* SetupView.swift */,
+				2223CAA52EE2091200BE7074 /* AboutView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		F493005201AA675FAA59CED9 /* FAME Smart Blinds */ = {
+			isa = PBXGroup;
+			children = (
+				DF9610AAAC80290BDA24165D /* ContentView.swift */,
+				6AC7163DD235023F6C13489A /* FAMESmartBlindsApp.swift */,
+				22EDA7F22EDD1B9C0025CDA6 /* Assets.xcassets */,
+				520DBA0867FF44EB943EBE52 /* FAMESmartBlinds.entitlements */,
+				A8333C37F54BA6CCED0EC174 /* Info.plist */,
+				1BB6EBC2C903F240CC5BCE4A /* Models */,
+				1EDC702E2ECA47A1331FEAF6 /* Services */,
+				774C86CA333161F1364D982B /* Utilities */,
+				DD5A8042173DCC4560F5BA2B /* Views */,
+			);
+			path = "FAME Smart Blinds";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		917C9CE9ED1645F7718E2F6E /* FAME Smart Blinds */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AC51FCB6E680C5FFAE910830 /* Build configuration list for PBXNativeTarget "FAME Smart Blinds" */;
+			buildPhases = (
+				18006E8232F81178DDEF3757 /* Sources */,
+				RESOURCES001BUILDPHASE01 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "FAME Smart Blinds";
+			packageProductDependencies = (
+			);
+			productName = FAMESmartBlinds;
+			productReference = FE3531DB8754F0391CFA8409 /* FAME Smart Blinds.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		8BB9F48DAAAC241B1CF31A0B /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 2610;
+				TargetAttributes = {
+					917C9CE9ED1645F7718E2F6E = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 553AC10E87F3F95E3489BD20 /* Build configuration list for PBXProject "FAME Smart Blinds" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 35FE732197F8BE03797DFAB2;
+			minimizedProjectReferenceProxies = 1;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				917C9CE9ED1645F7718E2F6E /* FAME Smart Blinds */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		RESOURCES001BUILDPHASE01 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				ASSETS0001RESOURCES00001 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		18006E8232F81178DDEF3757 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BE658E27AFA7E43E3C10DC95 /* BLEManager.swift in Sources */,
+				D518A293E6C4DDB93F49DB99 /* BlindDevice.swift in Sources */,
+				E1DC1619AAD25D3867661F43 /* CalibrationView.swift in Sources */,
+				FEE78385BB6A104F1EA71DE8 /* Constants.swift in Sources */,
+				3B8E711B609221A1A037DC15 /* ContentView.swift in Sources */,
+				2EA3C4D82A6BC92C7D366D7C /* DeviceControlView.swift in Sources */,
+				0330A2A16B87FEE3651B42C8 /* DeviceDiscovery.swift in Sources */,
+				FB124E2CF1BC1C3EF0C0D714 /* DeviceListView.swift in Sources */,
+				2223CAA62EE2091200BE7074 /* AboutView.swift in Sources */,
+				918F829E343DE91CA4D6960C /* DeviceRegistry.swift in Sources */,
+				8EB823817C9BAD7E05C18B9F /* DeviceSettingsView.swift in Sources */,
+				A36C44262446E34C32F07C75 /* FAMESmartBlindsApp.swift in Sources */,
+				D3CDBDE8837419A7FC79C6E2 /* HTTPClient.swift in Sources */,
+				SSE0001BUILDFILE00001 /* SSEClient.swift in Sources */,
+				77E8B69CA985334F4F0A11A7 /* SetupView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		07C5C0EFD49DF46CEE307E9A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "FAME Smart Blinds/FAMESmartBlinds.entitlements";
+				CODE_SIGN_IDENTITY = "-";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER = NO;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = YES;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				INFOPLIST_FILE = "FAME Smart Blinds/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "FAME Smart Blinds";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.fyrbyadditive.famesmartblinds;
+				PRODUCT_NAME = "FAME Smart Blinds";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		1ED249E142EE70C7AE9C8B4D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = QS865LKS7W;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		3C5EFE1FDABC540775543576 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = QS865LKS7W;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+		F3CE404A4CBCACDA318D355B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "FAME Smart Blinds/FAMESmartBlinds.entitlements";
+				CODE_SIGN_IDENTITY = "-";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER = NO;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = YES;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				INFOPLIST_FILE = "FAME Smart Blinds/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "FAME Smart Blinds";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.fyrbyadditive.famesmartblinds;
+				PRODUCT_NAME = "FAME Smart Blinds";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		553AC10E87F3F95E3489BD20 /* Build configuration list for PBXProject "FAME Smart Blinds" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1ED249E142EE70C7AE9C8B4D /* Debug */,
+				3C5EFE1FDABC540775543576 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		AC51FCB6E680C5FFAE910830 /* Build configuration list for PBXNativeTarget "FAME Smart Blinds" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				07C5C0EFD49DF46CEE307E9A /* Debug */,
+				F3CE404A4CBCACDA318D355B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 8BB9F48DAAAC241B1CF31A0B /* Project object */;
+}

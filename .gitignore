@@ -1,0 +1,63 @@
+# PlatformIO
+firmware/.pio/
+firmware/.vscode/
+firmware/lib/
+firmware/.piolibdeps/
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Build outputs
+*.o
+*.a
+*.so
+*.dylib
+*.exe
+
+# iOS
+ios/GeekyBlinders/build/
+ios/GeekyBlinders/DerivedData/
+ios/GeekyBlinders/Pods/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xcuserstate
+xcuserdata/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/*.iml
+android/app/*.iml
+android/.idea/
+android/captures/
+android/.externalNativeBuild/
+android/.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Gradle
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+.gradletasknamecache
+
+# Secrets
+*.pem
+*.key
+credentials.json
+secrets.h

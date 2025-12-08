@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">FAME Smart Blinds</string>
+
+    <!-- Navigation -->
+    <string name="nav_devices">Devices</string>
+    <string name="nav_setup">Setup</string>
+
+    <!-- Device List -->
+    <string name="no_devices_found">No Devices Found</string>
+    <string name="no_devices_hint">Devices will appear automatically when detected on your network. Use the Setup tab to add new devices.</string>
+    <string name="enter_ip_manually">Enter IP Manually</string>
+    <string name="discovered_devices">Discovered Devices</string>
+
+    <!-- Device Control -->
+    <string name="open">Open</string>
+    <string name="close">Close</string>
+    <string name="stop">STOP</string>
+    <string name="connections">Connections</string>
+    <string name="calibration">Calibration</string>
+    <string name="calibrated">Calibrated</string>
+    <string name="not_calibrated">Not Calibrated</string>
+    <string name="position">Position</string>
+    <string name="start_calibration">Start Calibration</string>
+    <string name="recalibrate">Recalibrate</string>
+    <string name="device_info">Device Info</string>
+    <string name="device_id">Device ID</string>
+    <string name="mac_address">MAC Address</string>
+    <string name="ip_address">IP Address</string>
+    <string name="rename_device">Rename Device</string>
+    <string name="settings">Settings</string>
+
+    <!-- Setup -->
+    <string name="select_device">Select a Device</string>
+    <string name="select_device_hint">Choose a FAME Smart Blinds device to set up</string>
+    <string name="scanning_devices">Scanning for devices…</string>
+    <string name="no_unconfigured_devices">No unconfigured devices found</string>
+    <string name="scan_for_devices">Scan for Devices</string>
+    <string name="continue_button">Continue</string>
+    <string name="connecting">Connecting…</string>
+    <string name="connecting_to">Connecting to %1$s</string>
+    <string name="configure_wifi">Configure WiFi</string>
+    <string name="wifi_hint">Enter your WiFi credentials to connect the device to your network</string>
+    <string name="wifi_ssid">WiFi Network Name (SSID)</string>
+    <string name="wifi_password">Password</string>
+    <string name="connect">Connect</string>
+    <string name="name_device">Name Your Device</string>
+    <string name="name_hint">Give your blind controller a friendly name to identify it easily</string>
+    <string name="device_name">Device Name</string>
+    <string name="save_continue">Save &amp; Continue</string>
+    <string name="orientation">Device Orientation</string>
+    <string name="orientation_hint">Which side of the window is the servo mounted on?</string>
+    <string name="left_side">Left Side</string>
+    <string name="right_side">Right Side</string>
+    <string name="left_description">Servo mounted on the left side of the window</string>
+    <string name="right_description">Servo mounted on the right side of the window</string>
+    <string name="set_password">Set Device Password</string>
+    <string name="password_hint">Optionally set a password to secure access to your device</string>
+    <string name="confirm_password">Confirm Password</string>
+    <string name="passwords_dont_match">Passwords don\'t match</string>
+    <string name="skip_no_password">Skip - No Password</string>
+    <string name="configure_mqtt">Configure Home Assistant</string>
+    <string name="mqtt_hint">Enter your MQTT broker address to enable Home Assistant integration</string>
+    <string name="mqtt_broker">MQTT Broker (e.g., 192.168.1.50)</string>
+    <string name="mqtt_port">Port</string>
+    <string name="skip_for_now">Skip for Now</string>
+    <string name="setup_complete">Setup Complete!</string>
+    <string name="setup_complete_hint">Your FAME Smart Blinds device is now configured.</string>
+    <string name="done">Done</string>
+
+    <!-- Calibration -->
+    <string name="calibration_title">Calibration</string>
+    <string name="ready_to_calibrate">Ready to Calibrate</string>
+    <string name="finding_home">Finding Home…</string>
+    <string name="at_home_position">At Home Position</string>
+    <string name="calibration_complete">Calibration Complete</string>
+    <string name="set_bottom_position">Set Bottom Position</string>
+    <string name="cancel">Cancel</string>
+    <string name="current_position">Current Position</string>
+
+    <!-- Settings -->
+    <string name="device_information">Device Information</string>
+    <string name="name">Name</string>
+    <string name="mounting_side">Mounting Side</string>
+    <string name="servo_speed">Servo Speed</string>
+    <string name="speed_hint">Adjust how fast the blind moves</string>
+    <string name="firmware">Firmware</string>
+    <string name="current_version">Current Version</string>
+    <string name="update_firmware">Update Firmware</string>
+    <string name="actions">Actions</string>
+    <string name="restart_device">Restart Device</string>
+    <string name="danger_zone">Danger Zone</string>
+    <string name="factory_reset">Factory Reset</string>
+    <string name="factory_reset_warning">This will erase all settings including WiFi credentials, calibration data, and device name. The device will need to be set up again.</string>
+    <string name="confirm_factory_reset">Are you sure you want to factory reset this device?</string>
+    <string name="reset">Reset</string>
+
+    <!-- About -->
+    <string name="about">About</string>
+    <string name="about_description">Smart blind control for your home</string>
+    <string name="wifi">WiFi</string>
+    <string name="control">Control</string>
+    <string name="calibrate">Calibrate</string>
+    <string name="copyright">© 2025 Fyrby Additive Manufacturing &amp; Engineering</string>
+    <string name="website_url">https://fyrbyadditive.com</string>
+    <string name="website_label">fyrbyadditive.com</string>
+
+    <!-- Common -->
+    <string name="error">Error</string>
+    <string name="ok">OK</string>
+    <string name="save">Save</string>
+    <string name="loading">Loading…</string>
+    <string name="unknown">Unknown</string>
+    <string name="not_connected">Not connected</string>
+</resources>
