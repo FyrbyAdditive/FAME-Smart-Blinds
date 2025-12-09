@@ -6,7 +6,7 @@
 // ============================================================================
 
 // Firmware version
-#define FIRMWARE_VERSION "1.0.4"
+#define FIRMWARE_VERSION "1.0.5"
 #define DEVICE_NAME_PREFIX "FAMEBlinds"
 
 // ============================================================================

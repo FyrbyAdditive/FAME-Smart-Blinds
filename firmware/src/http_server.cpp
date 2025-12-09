@@ -567,6 +567,14 @@ String HttpServer::buildInfoJson() {
     doc["orientation"] = storage.getOrientation();
     doc["speed"] = storage.getServoSpeed();
 
+    // WiFi info (SSID only, no password for security)
+    doc["wifiSsid"] = _wifiSsid;
+
+    // MQTT info (broker, port, and username - no password for security)
+    doc["mqttBroker"] = storage.getMqttBroker();
+    doc["mqttPort"] = storage.getMqttPort();
+    doc["mqttUser"] = storage.getMqttUser();
+
     JsonObject endpoints = doc["endpoints"].to<JsonObject>();
     endpoints["status"] = "GET /status";
     endpoints["info"] = "GET /info";

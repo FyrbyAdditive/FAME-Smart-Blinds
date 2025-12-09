@@ -3,11 +3,12 @@
 
 An open smart blind project with Home Assistant integration.
 
-## Hardware
+## Electronic Hardware
 
 - **Seeed XIAO ESP32-C3** - WiFi/BLE microcontroller
 - **XIAO Bus Servo Adapter** - Serial bus interface
 - **Feetech STS Series Servo** - STS3215 Smart serial servo
+- **Seeed Hall Sensor**
 
 ## Features
 
@@ -21,7 +22,7 @@ An open smart blind project with Home Assistant integration.
 
 ### Model, Parts & Blind
 
-The bill of materials and 3D printable files will shortly be available via my club on Printables.
+The model, full list of hardware and build instructions can be found [at my club on Printables](https://www.printables.com/model/1504685-fame-smart-blinds-preview-1).
 
 ### Firmware
 
