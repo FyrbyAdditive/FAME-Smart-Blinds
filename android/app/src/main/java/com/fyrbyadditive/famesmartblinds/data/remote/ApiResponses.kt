@@ -36,7 +36,11 @@ data class DeviceInfo(
     val deviceId: String,
     val hostname: String,
     val orientation: String?,
-    val speed: Int?
+    val speed: Int?,
+    val wifiSsid: String?,
+    val mqttBroker: String?,
+    val mqttPort: Int?,
+    val mqttUser: String?
 ) {
     val deviceOrientation: DeviceOrientation
         get() = DeviceOrientation.fromString(orientation)

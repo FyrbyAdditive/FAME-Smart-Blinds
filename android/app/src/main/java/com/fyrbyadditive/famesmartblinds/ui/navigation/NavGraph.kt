@@ -33,11 +33,15 @@ import androidx.navigation.navArgument
 import com.fyrbyadditive.famesmartblinds.R
 import com.fyrbyadditive.famesmartblinds.ui.screens.*
 import com.fyrbyadditive.famesmartblinds.viewmodel.CalibrationViewModel
+import com.fyrbyadditive.famesmartblinds.viewmodel.DeviceConfigurationViewModel
 import com.fyrbyadditive.famesmartblinds.viewmodel.DeviceControlViewModel
 import com.fyrbyadditive.famesmartblinds.viewmodel.DeviceListViewModel
 import com.fyrbyadditive.famesmartblinds.viewmodel.LogsViewModel
+import com.fyrbyadditive.famesmartblinds.viewmodel.MQTTConfigurationViewModel
+import com.fyrbyadditive.famesmartblinds.viewmodel.PasswordConfigurationViewModel
 import com.fyrbyadditive.famesmartblinds.viewmodel.SettingsViewModel
 import com.fyrbyadditive.famesmartblinds.viewmodel.SetupViewModel
+import com.fyrbyadditive.famesmartblinds.viewmodel.WiFiConfigurationViewModel
 
 sealed class Screen(val route: String) {
     data object DeviceList : Screen("devices")
@@ -53,6 +57,18 @@ sealed class Screen(val route: String) {
     }
     data object Logs : Screen("logs/{deviceId}") {
         fun createRoute(deviceId: String) = "logs/$deviceId"
+    }
+    data object Configuration : Screen("configuration/{deviceId}") {
+        fun createRoute(deviceId: String) = "configuration/$deviceId"
+    }
+    data object WiFiConfiguration : Screen("wifi-configuration/{deviceId}") {
+        fun createRoute(deviceId: String) = "wifi-configuration/$deviceId"
+    }
+    data object MQTTConfiguration : Screen("mqtt-configuration/{deviceId}") {
+        fun createRoute(deviceId: String) = "mqtt-configuration/$deviceId"
+    }
+    data object PasswordConfiguration : Screen("password-configuration/{deviceId}") {
+        fun createRoute(deviceId: String) = "password-configuration/$deviceId"
     }
 }
 
@@ -219,7 +235,54 @@ fun FAMESmartBlindsNavHost(
                 SettingsScreen(
                     viewModel = settingsViewModel,
                     onNavigateBack = { navController.popBackStack() },
-                    onNavigateToLogs = { navController.navigate(Screen.Logs.createRoute(deviceId)) }
+                    onNavigateToLogs = { navController.navigate(Screen.Logs.createRoute(deviceId)) },
+                    onNavigateToWiFiConfiguration = { navController.navigate(Screen.WiFiConfiguration.createRoute(deviceId)) },
+                    onNavigateToMQTTConfiguration = { navController.navigate(Screen.MQTTConfiguration.createRoute(deviceId)) },
+                    onNavigateToPasswordConfiguration = { navController.navigate(Screen.PasswordConfiguration.createRoute(deviceId)) }
+                )
+            }
+
+            composable(
+                route = Screen.Configuration.route,
+                arguments = listOf(navArgument("deviceId") { type = NavType.StringType })
+            ) {
+                val configViewModel: DeviceConfigurationViewModel = hiltViewModel()
+                DeviceConfigurationScreen(
+                    viewModel = configViewModel,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                route = Screen.WiFiConfiguration.route,
+                arguments = listOf(navArgument("deviceId") { type = NavType.StringType })
+            ) {
+                val wifiViewModel: WiFiConfigurationViewModel = hiltViewModel()
+                WiFiConfigurationScreen(
+                    viewModel = wifiViewModel,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                route = Screen.MQTTConfiguration.route,
+                arguments = listOf(navArgument("deviceId") { type = NavType.StringType })
+            ) {
+                val mqttViewModel: MQTTConfigurationViewModel = hiltViewModel()
+                MQTTConfigurationScreen(
+                    viewModel = mqttViewModel,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                route = Screen.PasswordConfiguration.route,
+                arguments = listOf(navArgument("deviceId") { type = NavType.StringType })
+            ) {
+                val passwordViewModel: PasswordConfigurationViewModel = hiltViewModel()
+                PasswordConfigurationScreen(
+                    viewModel = passwordViewModel,
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
 

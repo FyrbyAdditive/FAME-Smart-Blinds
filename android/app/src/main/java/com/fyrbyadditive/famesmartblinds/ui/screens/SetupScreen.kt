@@ -60,11 +60,6 @@ fun SetupScreen(
     val confirmPassword by viewModel.confirmPassword.collectAsState()
     val isSavingPassword by viewModel.isSavingPassword.collectAsState()
 
-    // MQTT states
-    val mqttBroker by viewModel.mqttBroker.collectAsState()
-    val mqttPort by viewModel.mqttPort.collectAsState()
-    val isSavingMqtt by viewModel.isSavingMqtt.collectAsState()
-
     // Finish states
     val isFinishing by viewModel.isFinishing.collectAsState()
 
@@ -163,16 +158,6 @@ fun SetupScreen(
                     onConfirmChange = { viewModel.updateConfirmPassword(it) },
                     onContinue = { viewModel.configurePassword() },
                     onSkip = { viewModel.skipPassword() }
-                )
-
-                SetupStep.CONFIGURE_MQTT -> MqttConfigStep(
-                    broker = mqttBroker,
-                    port = mqttPort,
-                    isSaving = isSavingMqtt,
-                    onBrokerChange = { viewModel.updateMqttBroker(it) },
-                    onPortChange = { viewModel.updateMqttPort(it) },
-                    onContinue = { viewModel.configureMqtt() },
-                    onSkip = { viewModel.skipMqtt() }
                 )
 
                 SetupStep.COMPLETE -> SetupCompleteStep(
@@ -757,91 +742,6 @@ private fun PasswordConfigStep(
 
         TextButton(onClick = onSkip) {
             Text("Skip - No Password")
-        }
-    }
-}
-
-@Composable
-private fun MqttConfigStep(
-    broker: String,
-    port: String,
-    isSaving: Boolean,
-    onBrokerChange: (String) -> Unit,
-    onPortChange: (String) -> Unit,
-    onContinue: () -> Unit,
-    onSkip: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(
-            Icons.Default.Hub,
-            contentDescription = null,
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        Text(
-            text = "Configure Home Assistant",
-            style = MaterialTheme.typography.titleLarge
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        Text(
-            text = "Enter your MQTT broker address to enable Home Assistant integration",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(Modifier.height(24.dp))
-
-        OutlinedTextField(
-            value = broker,
-            onValueChange = onBrokerChange,
-            label = { Text("MQTT Broker (e.g., 192.168.1.50)") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Uri,
-                imeAction = ImeAction.Next
-            )
-        )
-
-        Spacer(Modifier.height(12.dp))
-
-        OutlinedTextField(
-            value = port,
-            onValueChange = onPortChange,
-            label = { Text("Port") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Number,
-                imeAction = ImeAction.Done
-            )
-        )
-
-        Spacer(Modifier.weight(1f))
-
-        Button(
-            onClick = onContinue,
-            enabled = broker.isNotEmpty() && !isSaving,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(if (isSaving) "Configuring..." else "Save & Continue")
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        TextButton(onClick = onSkip) {
-            Text("Skip for Now")
         }
     }
 }

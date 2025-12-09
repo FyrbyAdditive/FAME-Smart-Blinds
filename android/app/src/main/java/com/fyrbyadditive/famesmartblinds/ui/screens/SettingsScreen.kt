@@ -24,7 +24,10 @@ import com.fyrbyadditive.famesmartblinds.viewmodel.SettingsViewModel
 fun SettingsScreen(
     viewModel: SettingsViewModel,
     onNavigateBack: () -> Unit,
-    onNavigateToLogs: () -> Unit
+    onNavigateToLogs: () -> Unit,
+    onNavigateToWiFiConfiguration: () -> Unit = {},
+    onNavigateToMQTTConfiguration: () -> Unit = {},
+    onNavigateToPasswordConfiguration: () -> Unit = {}
 ) {
     val device by viewModel.device.collectAsState()
     val firmwareVersion by viewModel.firmwareVersion.collectAsState()
@@ -203,6 +206,41 @@ fun SettingsScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
+            // Configuration Section
+            SettingsSectionHeader(title = "Configuration")
+
+            TextButton(
+                onClick = onNavigateToWiFiConfiguration,
+                enabled = device?.ipAddress != null,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            ) {
+                Icon(Icons.Default.Wifi, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("WiFi")
+            }
+
+            TextButton(
+                onClick = onNavigateToMQTTConfiguration,
+                enabled = device?.ipAddress != null,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            ) {
+                Icon(Icons.Default.Dns, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("MQTT")
+            }
+
+            TextButton(
+                onClick = onNavigateToPasswordConfiguration,
+                enabled = device?.ipAddress != null,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            ) {
+                Icon(Icons.Default.Lock, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Password")
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
             // Firmware Section
             SettingsSectionHeader(title = "Firmware")
 
@@ -334,7 +372,7 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun SettingsSectionHeader(title: String) {
+fun SettingsSectionHeader(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleSmall,

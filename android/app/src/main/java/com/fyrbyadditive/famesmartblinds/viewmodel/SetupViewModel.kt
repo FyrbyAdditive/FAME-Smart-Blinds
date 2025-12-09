@@ -28,7 +28,6 @@ enum class SetupStep {
     CONFIGURE_NAME,
     CONFIGURE_ORIENTATION,
     CONFIGURE_PASSWORD,
-    CONFIGURE_MQTT,
     COMPLETE
 }
 
@@ -106,16 +105,6 @@ class SetupViewModel @Inject constructor(
 
     val passwordsMatch: Boolean
         get() = _devicePassword.value.isEmpty() || _devicePassword.value == _confirmPassword.value
-
-    // MQTT config
-    private val _mqttBroker = MutableStateFlow("")
-    val mqttBroker: StateFlow<String> = _mqttBroker.asStateFlow()
-
-    private val _mqttPort = MutableStateFlow("1883")
-    val mqttPort: StateFlow<String> = _mqttPort.asStateFlow()
-
-    private val _isSavingMqtt = MutableStateFlow(false)
-    val isSavingMqtt: StateFlow<Boolean> = _isSavingMqtt.asStateFlow()
 
     // Finishing
     private val _isFinishing = MutableStateFlow(false)
@@ -299,38 +288,11 @@ class SetupViewModel @Inject constructor(
         viewModelScope.launch {
             delay(1500)
             _isSavingPassword.value = false
-            _setupStep.value = SetupStep.CONFIGURE_MQTT
-        }
-    }
-
-    fun skipPassword() {
-        _setupStep.value = SetupStep.CONFIGURE_MQTT
-    }
-
-    fun updateMqttBroker(broker: String) {
-        _mqttBroker.value = broker
-    }
-
-    fun updateMqttPort(port: String) {
-        _mqttPort.value = port
-    }
-
-    fun configureMqtt() {
-        val broker = _mqttBroker.value.trim()
-        if (broker.isEmpty()) return
-
-        _isSavingMqtt.value = true
-        val port = _mqttPort.value.toIntOrNull() ?: 1883
-        bleManager.configureMqtt(broker, port)
-
-        viewModelScope.launch {
-            delay(2000)
-            _isSavingMqtt.value = false
             _setupStep.value = SetupStep.COMPLETE
         }
     }
 
-    fun skipMqtt() {
+    fun skipPassword() {
         _setupStep.value = SetupStep.COMPLETE
     }
 
@@ -383,21 +345,17 @@ class SetupViewModel @Inject constructor(
         _devicePassword.value = ""
         _confirmPassword.value = ""
         _isSavingPassword.value = false
-        _mqttBroker.value = ""
-        _mqttPort.value = "1883"
-        _isSavingMqtt.value = false
         _isFinishing.value = false
     }
 
     val progressValue: Float
         get() = when (_setupStep.value) {
             SetupStep.SELECT_DEVICE -> 0f
-            SetupStep.CONNECT_BLE -> 0.125f
-            SetupStep.CONFIGURE_WIFI -> 0.25f
-            SetupStep.CONFIGURE_NAME -> 0.375f
-            SetupStep.CONFIGURE_ORIENTATION -> 0.5f
-            SetupStep.CONFIGURE_PASSWORD -> 0.625f
-            SetupStep.CONFIGURE_MQTT -> 0.75f
+            SetupStep.CONNECT_BLE -> 0.14f
+            SetupStep.CONFIGURE_WIFI -> 0.28f
+            SetupStep.CONFIGURE_NAME -> 0.42f
+            SetupStep.CONFIGURE_ORIENTATION -> 0.57f
+            SetupStep.CONFIGURE_PASSWORD -> 0.71f
             SetupStep.COMPLETE -> 1f
         }
 
