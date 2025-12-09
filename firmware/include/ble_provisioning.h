@@ -11,6 +11,7 @@ using BleDeviceNameCallback = std::function<void(const String& name)>;
 using BleDevicePasswordCallback = std::function<void(const String& password)>;
 using BleOrientationCallback = std::function<void(const String& orientation)>;
 using BleCommandCallback = std::function<void(const String& command)>;
+using BleWifiScanCallback = std::function<void()>;
 
 class BleProvisioning {
 public:
@@ -39,6 +40,10 @@ public:
     void onDevicePassword(BleDevicePasswordCallback callback);
     void onOrientation(BleOrientationCallback callback);
     void onCommand(BleCommandCallback callback);
+    void onWifiScanRequest(BleWifiScanCallback callback);
+
+    // Set WiFi scan results (notifies connected clients)
+    void setWifiScanResults(const String& results);
 
     // Set current values (for read characteristics)
     void setCurrentSsid(const String& ssid);
@@ -63,6 +68,7 @@ private:
     BleDevicePasswordCallback _devicePasswordCallback;
     BleOrientationCallback _orientationCallback;
     BleCommandCallback _commandCallback;
+    BleWifiScanCallback _wifiScanCallback;
 
     void setupService();
 

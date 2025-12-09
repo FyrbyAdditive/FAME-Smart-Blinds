@@ -76,6 +76,8 @@
 #define BLE_CHAR_COMMAND_UUID       "beb5483e-36e1-4688-b7f5-ea07361b26ad"
 #define BLE_CHAR_DEVICE_PASS_UUID   "beb5483e-36e1-4688-b7f5-ea07361b26ae"
 #define BLE_CHAR_ORIENTATION_UUID   "beb5483e-36e1-4688-b7f5-ea07361b26af"
+#define BLE_CHAR_WIFI_SCAN_TRIGGER_UUID "beb5483e-36e1-4688-b7f5-ea07361b26b0"
+#define BLE_CHAR_WIFI_SCAN_RESULTS_UUID "beb5483e-36e1-4688-b7f5-ea07361b26b1"
 
 // ============================================================================
 // NVS Storage Keys

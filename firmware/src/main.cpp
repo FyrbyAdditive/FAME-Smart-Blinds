@@ -1,4 +1,7 @@
 #include <Arduino.h>
+#include <WiFi.h>
+#include <vector>
+#include <algorithm>
 #include "config.h"
 #include "logger.h"
 #include "storage.h"
@@ -36,7 +39,12 @@ void onBleDeviceName(const String& name);
 void onBleDevicePassword(const String& password);
 void onBleOrientation(const String& orientation);
 void onBleCommand(const String& command);
+void onBleWifiScanRequest();
+void performWifiScan();
 void updateBleStatus();
+
+// Flag to request WiFi scan from main loop (avoid blocking BLE stack)
+volatile bool wifiScanRequested = false;
 
 void setup() {
     // Initialize USB serial for debugging
@@ -114,6 +122,7 @@ void setup() {
     ble.onDevicePassword(onBleDevicePassword);
     ble.onOrientation(onBleOrientation);
     ble.onCommand(onBleCommand);
+    ble.onWifiScanRequest(onBleWifiScanRequest);
 
     // Only start BLE advertising if setup is not complete
     // After initial setup, all device management is done over WiFi/HTTP
@@ -171,6 +180,13 @@ void loop() {
         LOG_BOOT("Restart pending - restarting in 500ms...");
         delay(500);  // Allow HTTP response to be fully sent
         ESP.restart();
+    }
+
+    // Check for pending WiFi scan request (from BLE callback)
+    // Must run in main loop to avoid blocking BLE stack
+    if (wifiScanRequested) {
+        wifiScanRequested = false;
+        performWifiScan();
     }
 
     // Update all managers
@@ -469,4 +485,95 @@ void updateBleStatus() {
     if (ble.isClientConnected()) {
         ble.updateStatus(status);
     }
+}
+
+void onBleWifiScanRequest() {
+    // Just set the flag - actual scan happens in main loop
+    // This avoids blocking the BLE stack which would prevent notifications from working
+    LOG_BLE("WiFi scan requested via BLE - scheduling for main loop");
+    wifiScanRequested = true;
+}
+
+void performWifiScan() {
+    LOG_BLE("========== WIFI NETWORK SCAN START ==========");
+
+    // Notify that scan is starting
+    ble.updateStatus("wifi_scanning");
+
+    // Perform WiFi scan (blocking, typically takes 1-3 seconds)
+    LOG_BLE("Calling WiFi.scanNetworks()...");
+    int numNetworks = WiFi.scanNetworks(false, false);
+
+    LOG_BLE("WiFi scan complete - found %d networks", numNetworks);
+
+    // Build compact JSON response
+    // Format: {"n":[{"s":"SSID","r":-65,"e":1},...]}
+    // s=ssid, r=rssi, e=encrypted (1=secured, 0=open)
+    String json = "{\"n\":[";
+
+    // Sort networks by signal strength and limit to 15 strongest
+    // First, collect unique networks (filter duplicates by SSID)
+    struct Network {
+        String ssid;
+        int rssi;
+        bool encrypted;
+    };
+    std::vector<Network> networks;
+
+    for (int i = 0; i < numNetworks; i++) {
+        String ssid = WiFi.SSID(i);
+        if (ssid.isEmpty()) continue;  // Skip hidden networks
+
+        // Check for duplicate SSID (keep stronger signal)
+        bool isDuplicate = false;
+        for (auto& n : networks) {
+            if (n.ssid == ssid) {
+                if (WiFi.RSSI(i) > n.rssi) {
+                    n.rssi = WiFi.RSSI(i);
+                }
+                isDuplicate = true;
+                break;
+            }
+        }
+
+        if (!isDuplicate) {
+            Network net;
+            net.ssid = ssid;
+            net.rssi = WiFi.RSSI(i);
+            net.encrypted = WiFi.encryptionType(i) != WIFI_AUTH_OPEN;
+            networks.push_back(net);
+        }
+    }
+
+    // Sort by signal strength (strongest first)
+    std::sort(networks.begin(), networks.end(), [](const Network& a, const Network& b) {
+        return a.rssi > b.rssi;
+    });
+
+    // Build JSON with up to 15 networks
+    int count = 0;
+    for (const auto& net : networks) {
+        if (count >= 15) break;
+        if (count > 0) json += ",";
+
+        // Escape special characters in SSID for JSON
+        String escapedSsid = net.ssid;
+        escapedSsid.replace("\\", "\\\\");
+        escapedSsid.replace("\"", "\\\"");
+
+        json += "{\"s\":\"" + escapedSsid + "\",\"r\":" + String(net.rssi) +
+                ",\"e\":" + (net.encrypted ? "1" : "0") + "}";
+        count++;
+    }
+
+    json += "]}";
+
+    // Clean up scan results
+    WiFi.scanDelete();
+
+    LOG_BLE("WiFi scan results JSON (%d bytes): %s", json.length(), json.c_str());
+
+    // Send results via BLE characteristic (will notify connected client)
+    ble.setWifiScanResults(json);
+    LOG_BLE("========== WIFI NETWORK SCAN END ==========");
 }

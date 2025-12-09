@@ -18,6 +18,8 @@ static BLECharacteristic* pCharMqttBroker = nullptr;
 static BLECharacteristic* pCharOrientation = nullptr;
 static BLECharacteristic* pCharStatus = nullptr;
 static BLECharacteristic* pCharCommand = nullptr;
+static BLECharacteristic* pCharWifiScanTrigger = nullptr;
+static BLECharacteristic* pCharWifiScanResults = nullptr;
 
 // Static pointer to provisioning instance for callbacks
 static BleProvisioning* bleInstance = nullptr;
@@ -50,7 +52,8 @@ public:
         DEVICE_PASSWORD,
         MQTT_BROKER,
         ORIENTATION,
-        COMMAND
+        COMMAND,
+        WIFI_SCAN_TRIGGER
     };
 
     CharacteristicCallbacks(CharType type) : _type(type) {}
@@ -116,6 +119,13 @@ public:
                     bleInstance->_commandCallback(value);
                 }
                 break;
+
+            case WIFI_SCAN_TRIGGER:
+                LOG_BLE("WiFi scan trigger received: %s", value.c_str());
+                if (value == "SCAN" && bleInstance && bleInstance->_wifiScanCallback) {
+                    bleInstance->_wifiScanCallback();
+                }
+                break;
         }
     }
 
@@ -167,8 +177,10 @@ void BleProvisioning::init(const String& deviceName) {
 }
 
 void BleProvisioning::setupService() {
-    // Create service
-    pService = pServer->createService(BLE_SERVICE_UUID);
+    // Create service with enough handles for 10 characteristics
+    // Each characteristic needs ~3 handles (decl + value + optional descriptor)
+    // 10 characteristics * 3 = 30, plus 1 for service = 31, round up to 35
+    pService = pServer->createService(BLEUUID(BLE_SERVICE_UUID), 35);
 
     // WiFi SSID characteristic (read/write)
     pCharSsid = pService->createCharacteristic(
@@ -231,10 +243,25 @@ void BleProvisioning::setupService() {
     );
     pCharCommand->setCallbacks(new CharacteristicCallbacks(CharacteristicCallbacks::COMMAND));
 
+    // WiFi Scan Trigger characteristic (write)
+    pCharWifiScanTrigger = pService->createCharacteristic(
+        BLE_CHAR_WIFI_SCAN_TRIGGER_UUID,
+        BLECharacteristic::PROPERTY_WRITE
+    );
+    pCharWifiScanTrigger->setCallbacks(new CharacteristicCallbacks(CharacteristicCallbacks::WIFI_SCAN_TRIGGER));
+
+    // WiFi Scan Results characteristic (read/notify)
+    pCharWifiScanResults = pService->createCharacteristic(
+        BLE_CHAR_WIFI_SCAN_RESULTS_UUID,
+        BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY
+    );
+    pCharWifiScanResults->addDescriptor(new BLE2902());
+    pCharWifiScanResults->setValue("");
+
     // Start service
     pService->start();
 
-    LOG_BLE("BLE service created with 8 characteristics");
+    LOG_BLE("BLE service created with 10 characteristics");
 }
 
 void BleProvisioning::startAdvertising() {
@@ -331,4 +358,16 @@ void BleProvisioning::setCurrentOrientation(const String& orientation) {
     if (pCharOrientation) {
         pCharOrientation->setValue(orientation.c_str());
     }
+}
+
+void BleProvisioning::onWifiScanRequest(BleWifiScanCallback callback) {
+    _wifiScanCallback = callback;
+}
+
+void BleProvisioning::setWifiScanResults(const String& results) {
+    if (!_initialized || !pCharWifiScanResults) return;
+
+    LOG_BLE("Setting WiFi scan results: %s", results.c_str());
+    pCharWifiScanResults->setValue(results.c_str());
+    pCharWifiScanResults->notify();
 }
