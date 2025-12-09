@@ -607,6 +607,10 @@ struct DeviceInfo: Codable {
     let hostname: String
     let orientation: String?  // "left" or "right"
     let speed: Int?  // 0-4095
+    let wifiSsid: String?
+    let mqttBroker: String?
+    let mqttPort: Int?
+    let mqttUser: String?
 
     var deviceOrientation: DeviceOrientation {
         DeviceOrientation(rawValue: orientation ?? "left") ?? .left

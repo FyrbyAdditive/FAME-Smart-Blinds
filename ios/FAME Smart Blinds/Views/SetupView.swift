@@ -17,7 +17,6 @@ struct SetupView: View {
         case configureName
         case configureOrientation
         case configurePassword
-        case configureMqtt
         case complete
     }
 
@@ -61,12 +60,6 @@ struct SetupView: View {
                     )
                 case .configurePassword:
                     DevicePasswordConfigStep(
-                        device: selectedDevice,
-                        onContinue: { setupStep = .configureMqtt },
-                        onSkip: { setupStep = .configureMqtt }
-                    )
-                case .configureMqtt:
-                    MqttConfigStep(
                         device: selectedDevice,
                         onContinue: { setupStep = .complete },
                         onSkip: { setupStep = .complete }
@@ -119,12 +112,11 @@ struct SetupView: View {
     private var progressValue: Double {
         switch setupStep {
         case .selectDevice: return 0.0
-        case .connectBLE: return 0.125
-        case .configureWifi: return 0.25
-        case .configureName: return 0.375
-        case .configureOrientation: return 0.5
-        case .configurePassword: return 0.625
-        case .configureMqtt: return 0.75
+        case .connectBLE: return 0.14
+        case .configureWifi: return 0.28
+        case .configureName: return 0.42
+        case .configureOrientation: return 0.57
+        case .configurePassword: return 0.71
         case .complete: return 1.0
         }
     }
@@ -681,89 +673,6 @@ struct DevicePasswordConfigStep: View {
 
         // Wait briefly then continue
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            isConfiguring = false
-            onContinue()
-        }
-    }
-}
-
-// MARK: - MQTT Config Step
-
-struct MqttConfigStep: View {
-    let device: BlindDevice?
-    let onContinue: () -> Void
-    let onSkip: () -> Void
-
-    @EnvironmentObject var bleManager: BLEManager
-    @State private var broker = ""
-    @State private var port = "1883"
-    @State private var isConfiguring = false
-
-    var body: some View {
-        VStack(spacing: 24) {
-            Image(systemName: "network")
-                .font(.system(size: 64))
-                .foregroundColor(.accentColor)
-
-            Text("Configure Home Assistant")
-                .font(.title2)
-                .fontWeight(.semibold)
-
-            Text("Enter your MQTT broker address to enable Home Assistant integration")
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-
-            VStack(spacing: 16) {
-                TextField("MQTT Broker (e.g., 192.168.1.50)", text: $broker)
-                    .textFieldStyle(.roundedBorder)
-                    #if os(iOS)
-                    .autocapitalization(.none)
-                    .keyboardType(.decimalPad)
-                    #endif
-                    .disableAutocorrection(true)
-
-                TextField("Port", text: $port)
-                    .textFieldStyle(.roundedBorder)
-                    #if os(iOS)
-                    .keyboardType(.numberPad)
-                    #endif
-            }
-            .padding(.horizontal)
-
-            Spacer()
-
-            VStack(spacing: 12) {
-                Button(isConfiguring ? "Configuring..." : "Save & Continue") {
-                    configureMqtt()
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(broker.isEmpty || isConfiguring)
-
-                Button("Skip for Now") {
-                    onSkip()
-                }
-                .foregroundColor(.secondary)
-            }
-        }
-        .padding()
-        .onAppear {
-            if let existingBroker = device?.mqttBroker, !existingBroker.isEmpty {
-                let parts = existingBroker.split(separator: ":")
-                broker = String(parts.first ?? "")
-                if parts.count > 1 {
-                    port = String(parts[1])
-                }
-            }
-        }
-    }
-
-    private func configureMqtt() {
-        isConfiguring = true
-        let portInt = Int(port) ?? 1883
-        bleManager.configureMqtt(broker: broker, port: portInt)
-
-        // Wait briefly then continue
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             isConfiguring = false
             onContinue()
         }

@@ -133,6 +133,30 @@ struct DeviceSettingsView: View {
                     Text("Adjust how fast the blind moves. Lower values are slower, higher values are faster.")
                 }
 
+                // Configuration Section
+                Section("Configuration") {
+                    NavigationLink {
+                        WiFiConfigurationView(device: device)
+                    } label: {
+                        Label("WiFi", systemImage: "wifi")
+                    }
+                    .disabled(device.ipAddress == nil)
+
+                    NavigationLink {
+                        MQTTConfigurationView(device: device)
+                    } label: {
+                        Label("MQTT", systemImage: "server.rack")
+                    }
+                    .disabled(device.ipAddress == nil)
+
+                    NavigationLink {
+                        PasswordConfigurationView(device: device)
+                    } label: {
+                        Label("Password", systemImage: "lock")
+                    }
+                    .disabled(device.ipAddress == nil)
+                }
+
                 // Firmware Section
                 Section("Firmware") {
                     HStack {
