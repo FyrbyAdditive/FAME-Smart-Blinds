@@ -238,7 +238,11 @@ fun FAMESmartBlindsNavHost(
                     onNavigateToLogs = { navController.navigate(Screen.Logs.createRoute(deviceId)) },
                     onNavigateToWiFiConfiguration = { navController.navigate(Screen.WiFiConfiguration.createRoute(deviceId)) },
                     onNavigateToMQTTConfiguration = { navController.navigate(Screen.MQTTConfiguration.createRoute(deviceId)) },
-                    onNavigateToPasswordConfiguration = { navController.navigate(Screen.PasswordConfiguration.createRoute(deviceId)) }
+                    onNavigateToPasswordConfiguration = { navController.navigate(Screen.PasswordConfiguration.createRoute(deviceId)) },
+                    onNavigateToDeviceList = {
+                        // Pop back to device list, clearing the back stack
+                        navController.popBackStack(Screen.DeviceList.route, inclusive = false)
+                    }
                 )
             }
 

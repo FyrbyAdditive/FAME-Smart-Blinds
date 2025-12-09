@@ -27,7 +27,8 @@ fun SettingsScreen(
     onNavigateToLogs: () -> Unit,
     onNavigateToWiFiConfiguration: () -> Unit = {},
     onNavigateToMQTTConfiguration: () -> Unit = {},
-    onNavigateToPasswordConfiguration: () -> Unit = {}
+    onNavigateToPasswordConfiguration: () -> Unit = {},
+    onNavigateToDeviceList: () -> Unit = {}
 ) {
     val device by viewModel.device.collectAsState()
     val firmwareVersion by viewModel.firmwareVersion.collectAsState()
@@ -105,7 +106,8 @@ fun SettingsScreen(
                 TextButton(
                     onClick = {
                         if (viewModel.performFactoryReset()) {
-                            onNavigateBack()
+                            // Navigate back to device list after factory reset
+                            onNavigateToDeviceList()
                         }
                     },
                     colors = ButtonDefaults.textButtonColors(
