@@ -64,3 +64,9 @@ gradle-app.setting
 *.key
 credentials.json
 secrets.h
+
+# Android signing
+android/release-keystore.jks
+android/keystore.properties
+*.jks
+*.keystore
