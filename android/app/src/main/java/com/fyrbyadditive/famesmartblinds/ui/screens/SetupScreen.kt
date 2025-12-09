@@ -23,6 +23,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.fyrbyadditive.famesmartblinds.data.model.BlindDevice
 import com.fyrbyadditive.famesmartblinds.data.model.DeviceOrientation
+import com.fyrbyadditive.famesmartblinds.data.model.SignalStrength
+import com.fyrbyadditive.famesmartblinds.data.model.WiFiNetwork
 import com.fyrbyadditive.famesmartblinds.service.BleManager
 import com.fyrbyadditive.famesmartblinds.viewmodel.SetupStep
 import com.fyrbyadditive.famesmartblinds.viewmodel.SetupViewModel
@@ -46,6 +48,10 @@ fun SetupScreen(
     val wifiConnecting by viewModel.wifiConnecting.collectAsState()
     val wifiStatus by viewModel.wifiStatus.collectAsState()
     val wifiFailed by viewModel.wifiFailed.collectAsState()
+    val scannedWifiNetworks by viewModel.scannedWifiNetworks.collectAsState()
+    val isWifiScanning by viewModel.isWifiScanning.collectAsState()
+    val showManualEntry by viewModel.showManualEntry.collectAsState()
+    val selectedNetwork by viewModel.selectedNetwork.collectAsState()
 
     // Device name states
     val deviceName by viewModel.deviceName.collectAsState()
@@ -130,9 +136,16 @@ fun SetupScreen(
                     isConnecting = wifiConnecting,
                     status = wifiStatus,
                     failed = wifiFailed,
+                    scannedNetworks = scannedWifiNetworks,
+                    isWifiScanning = isWifiScanning,
+                    showManualEntry = showManualEntry,
+                    selectedNetwork = selectedNetwork,
                     onSsidChange = { viewModel.updateWifiSsid(it) },
                     onPasswordChange = { viewModel.updateWifiPassword(it) },
-                    onConnect = { viewModel.configureWifi() }
+                    onConnect = { viewModel.configureWifi() },
+                    onTriggerScan = { viewModel.triggerWifiScan() },
+                    onSelectNetwork = { viewModel.selectNetwork(it) },
+                    onToggleManualEntry = { viewModel.setShowManualEntry(it) }
                 )
 
                 SetupStep.CONFIGURE_NAME -> DeviceNameConfigStep(
@@ -372,10 +385,24 @@ private fun WiFiConfigStep(
     isConnecting: Boolean,
     status: String,
     failed: Boolean,
+    scannedNetworks: List<WiFiNetwork>,
+    isWifiScanning: Boolean,
+    showManualEntry: Boolean,
+    selectedNetwork: WiFiNetwork?,
     onSsidChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
-    onConnect: () -> Unit
+    onConnect: () -> Unit,
+    onTriggerScan: () -> Unit,
+    onSelectNetwork: (WiFiNetwork) -> Unit,
+    onToggleManualEntry: (Boolean) -> Unit
 ) {
+    // Trigger scan on first composition
+    // Small delay to ensure BLE connection is fully established and descriptor writes are complete
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(500)
+        onTriggerScan()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -385,55 +412,164 @@ private fun WiFiConfigStep(
         Icon(
             Icons.Default.Wifi,
             contentDescription = null,
-            modifier = Modifier.size(64.dp),
+            modifier = Modifier.size(48.dp),
             tint = if (failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
         )
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(12.dp))
 
         Text(
             text = if (failed) "Connection Failed" else "Configure WiFi",
             style = MaterialTheme.typography.titleLarge
         )
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(4.dp))
 
         Text(
             text = if (failed) {
                 "Could not connect to the WiFi network. Please check your credentials and try again."
             } else {
-                "Enter your WiFi credentials to connect the device to your network"
+                "Select a network or enter credentials manually"
             },
             style = MaterialTheme.typography.bodyMedium,
             color = if (failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
 
-        OutlinedTextField(
-            value = ssid,
-            onValueChange = onSsidChange,
-            label = { Text("WiFi Network Name (SSID)") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
-        )
+        if (showManualEntry) {
+            // Manual entry mode
+            OutlinedTextField(
+                value = ssid,
+                onValueChange = onSsidChange,
+                label = { Text("WiFi Network Name (SSID)") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
+            )
 
-        Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
 
-        OutlinedTextField(
-            value = password,
-            onValueChange = onPasswordChange,
-            label = { Text("Password") },
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
-        )
+            OutlinedTextField(
+                value = password,
+                onValueChange = onPasswordChange,
+                label = { Text("Password") },
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            TextButton(onClick = {
+                onToggleManualEntry(false)
+                onTriggerScan()
+            }) {
+                Text("Show available networks")
+            }
+        } else {
+            // Network list mode
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Available Networks",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                IconButton(
+                    onClick = onTriggerScan,
+                    enabled = !isWifiScanning
+                ) {
+                    if (isWifiScanning) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(Icons.Default.Refresh, contentDescription = "Scan")
+                    }
+                }
+            }
+
+            if (isWifiScanning && scannedNetworks.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(150.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator()
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = "Scanning for networks...",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else if (scannedNetworks.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(150.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "No networks found",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedButton(onClick = onTriggerScan) {
+                            Text("Scan for Networks")
+                        }
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    items(scannedNetworks, key = { it.ssid }) { network ->
+                        NetworkRow(
+                            network = network,
+                            isSelected = selectedNetwork?.ssid == network.ssid,
+                            onClick = { onSelectNetwork(network) }
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            TextButton(onClick = { onToggleManualEntry(true) }) {
+                Text("Enter manually")
+            }
+
+            if (selectedNetwork != null) {
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = onPasswordChange,
+                    label = { Text("Password") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
+                )
+            }
+        }
 
         if (status.isNotEmpty()) {
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -461,6 +597,74 @@ private fun WiFiConfigStep(
         ) {
             Text(
                 if (isConnecting) "Connecting..." else if (failed) "Retry" else "Connect"
+            )
+        }
+    }
+}
+
+@Composable
+private fun NetworkRow(
+    network: WiFiNetwork,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val backgroundColor = if (isSelected) {
+        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+    } else {
+        Color.Transparent
+    }
+
+    val signalColor = when (network.signalStrength) {
+        SignalStrength.EXCELLENT -> Color(0xFF4CAF50) // Green
+        SignalStrength.GOOD -> MaterialTheme.colorScheme.primary
+        SignalStrength.FAIR -> Color(0xFFFF9800) // Orange
+        SignalStrength.WEAK -> MaterialTheme.colorScheme.error
+    }
+
+    val signalIcon = when (network.signalStrength) {
+        SignalStrength.EXCELLENT, SignalStrength.GOOD, SignalStrength.FAIR -> Icons.Default.Wifi
+        SignalStrength.WEAK -> Icons.Default.WifiOff
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(backgroundColor)
+            .clickable(onClick = onClick)
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            signalIcon,
+            contentDescription = null,
+            tint = signalColor,
+            modifier = Modifier.size(24.dp)
+        )
+
+        Spacer(Modifier.width(12.dp))
+
+        Text(
+            text = network.ssid,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f)
+        )
+
+        if (network.isSecured) {
+            Icon(
+                Icons.Default.Lock,
+                contentDescription = "Secured",
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.width(8.dp))
+        }
+
+        if (isSelected) {
+            Icon(
+                Icons.Default.CheckCircle,
+                contentDescription = "Selected",
+                tint = MaterialTheme.colorScheme.primary
             )
         }
     }

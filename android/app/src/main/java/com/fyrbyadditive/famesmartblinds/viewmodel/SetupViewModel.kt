@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.fyrbyadditive.famesmartblinds.data.model.BlindCommand
 import com.fyrbyadditive.famesmartblinds.data.model.BlindDevice
 import com.fyrbyadditive.famesmartblinds.data.model.DeviceOrientation
+import com.fyrbyadditive.famesmartblinds.data.model.WiFiNetwork
 import com.fyrbyadditive.famesmartblinds.data.repository.DeviceRepository
 import com.fyrbyadditive.famesmartblinds.service.BleManager
 import com.fyrbyadditive.famesmartblinds.service.DeviceDiscovery
@@ -78,6 +79,16 @@ class SetupViewModel @Inject constructor(
 
     private val _wifiFailed = MutableStateFlow(false)
     val wifiFailed: StateFlow<Boolean> = _wifiFailed.asStateFlow()
+
+    // WiFi scanning
+    val scannedWifiNetworks: StateFlow<List<WiFiNetwork>> = bleManager.scannedWifiNetworks
+    val isWifiScanning: StateFlow<Boolean> = bleManager.isWifiScanning
+
+    private val _showManualEntry = MutableStateFlow(false)
+    val showManualEntry: StateFlow<Boolean> = _showManualEntry.asStateFlow()
+
+    private val _selectedNetwork = MutableStateFlow<WiFiNetwork?>(null)
+    val selectedNetwork: StateFlow<WiFiNetwork?> = _selectedNetwork.asStateFlow()
 
     // Device name config
     private val _deviceName = MutableStateFlow("My Blinds")
@@ -155,6 +166,9 @@ class SetupViewModel @Inject constructor(
     fun continueToConnect() {
         val deviceId = _selectedDeviceId.value ?: return
 
+        // Stop BLE device scanning - we're done selecting
+        bleManager.stopScanning()
+
         deviceRepository.markDeviceInSetup(deviceId)
         bleManager.connect(deviceId)
         _setupStep.value = SetupStep.CONNECT_BLE
@@ -166,6 +180,29 @@ class SetupViewModel @Inject constructor(
 
     fun updateWifiPassword(password: String) {
         _wifiPassword.value = password
+    }
+
+    fun triggerWifiScan() {
+        bleManager.triggerWifiScan()
+    }
+
+    fun selectNetwork(network: WiFiNetwork) {
+        _selectedNetwork.value = network
+        _wifiSsid.value = network.ssid
+    }
+
+    fun toggleManualEntry() {
+        _showManualEntry.value = !_showManualEntry.value
+        if (_showManualEntry.value) {
+            _selectedNetwork.value = null
+        }
+    }
+
+    fun setShowManualEntry(show: Boolean) {
+        _showManualEntry.value = show
+        if (show) {
+            _selectedNetwork.value = null
+        }
     }
 
     fun configureWifi() {
@@ -338,6 +375,8 @@ class SetupViewModel @Inject constructor(
         _wifiConnecting.value = false
         _wifiStatus.value = ""
         _wifiFailed.value = false
+        _showManualEntry.value = false
+        _selectedNetwork.value = null
         _deviceName.value = "My Blinds"
         _isSavingName.value = false
         _orientation.value = DeviceOrientation.LEFT
