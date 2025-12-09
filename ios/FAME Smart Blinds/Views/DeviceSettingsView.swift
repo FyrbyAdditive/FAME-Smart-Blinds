@@ -50,6 +50,11 @@ struct DeviceSettingsView: View {
 
     @State private var showingDeviceLogs = false
 
+    // Use sheets for sub-views to avoid NavigationStack bugs on Mac Catalyst
+    @State private var showingWifiConfig = false
+    @State private var showingMqttConfig = false
+    @State private var showingPasswordConfig = false
+
     var body: some View {
         NavigationStack {
             List {
@@ -137,23 +142,50 @@ struct DeviceSettingsView: View {
 
                 // Configuration Section
                 Section("Configuration") {
-                    NavigationLink(destination: WiFiConfigurationView(device: device)) {
-                        Label("WiFi", systemImage: "wifi")
+                    Button {
+                        showingWifiConfig = true
+                    } label: {
+                        HStack {
+                            Label("WiFi", systemImage: "wifi")
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                        }
                     }
+                    .buttonStyle(.plain)
                     .disabled(device.ipAddress == nil)
-                    .id("wifi-nav")
 
-                    NavigationLink(destination: MQTTConfigurationView(device: device)) {
-                        Label("MQTT", systemImage: "server.rack")
+                    Button {
+                        showingMqttConfig = true
+                    } label: {
+                        HStack {
+                            Label("MQTT", systemImage: "server.rack")
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                        }
                     }
+                    .buttonStyle(.plain)
                     .disabled(device.ipAddress == nil)
-                    .id("mqtt-nav")
 
-                    NavigationLink(destination: PasswordConfigurationView(device: device)) {
-                        Label("Password", systemImage: "lock")
+                    Button {
+                        showingPasswordConfig = true
+                    } label: {
+                        HStack {
+                            Label("Password", systemImage: "lock")
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                        }
                     }
+                    .buttonStyle(.plain)
                     .disabled(device.ipAddress == nil)
-                    .id("password-nav")
                 }
 
                 // Firmware Section
@@ -283,6 +315,21 @@ struct DeviceSettingsView: View {
             }
             .sheet(isPresented: $showingDeviceLogs) {
                 DeviceLogsView(device: device)
+            }
+            .sheet(isPresented: $showingWifiConfig) {
+                NavigationStack {
+                    WiFiConfigurationView(device: device)
+                }
+            }
+            .sheet(isPresented: $showingMqttConfig) {
+                NavigationStack {
+                    MQTTConfigurationView(device: device)
+                }
+            }
+            .sheet(isPresented: $showingPasswordConfig) {
+                NavigationStack {
+                    PasswordConfigurationView(device: device)
+                }
             }
         }
     }

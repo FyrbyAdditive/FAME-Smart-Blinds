@@ -11,6 +11,8 @@ class BLEManager: NSObject, ObservableObject {
     @MainActor @Published var discoveredDevices: [BlindDevice] = []
     @MainActor @Published var connectedDevice: BlindDevice?
     @MainActor @Published var connectionState: ConnectionState = .disconnected
+    @MainActor @Published var scannedWifiNetworks: [WiFiNetwork] = []
+    @MainActor @Published var isWifiScanning = false
 
     enum ConnectionState: Sendable {
         case disconnected
@@ -30,6 +32,9 @@ class BLEManager: NSObject, ObservableObject {
     private var scanTimer: Timer?
     private var connectionTimer: Timer?
     private let bleQueue = DispatchQueue(label: "com.famesmartblinds.ble", qos: .userInitiated)
+
+    // Track pending notification subscriptions - we wait for these before marking connected
+    @MainActor private var pendingNotificationSubscriptions: Set<CBUUID> = []
 
     override init() {
         super.init()
@@ -173,9 +178,13 @@ class BLEManager: NSObject, ObservableObject {
 
     @MainActor
     func writeCharacteristic(_ uuid: CBUUID, value: String) {
-        guard let characteristic = characteristics[uuid],
-              let data = value.data(using: .utf8) else {
-            print("[BLE] Cannot write to \(uuid)")
+        guard let characteristic = characteristics[uuid] else {
+            NSLog("[BLE] Cannot write to %@ - characteristic not found (have %d characteristics stored)",
+                  uuid.uuidString, characteristics.count)
+            return
+        }
+        guard let data = value.data(using: .utf8) else {
+            NSLog("[BLE] Cannot write to %@ - failed to encode value", uuid.uuidString)
             return
         }
 
@@ -183,7 +192,7 @@ class BLEManager: NSObject, ObservableObject {
             ? .withoutResponse : .withResponse
 
         connectedPeripheral?.writeValue(data, for: characteristic, type: type)
-        print("[BLE] Wrote '\(value)' to \(uuid)")
+        NSLog("[BLE] Wrote '%@' to %@", value, uuid.uuidString)
     }
 
     // MARK: - Configuration Methods
@@ -229,6 +238,71 @@ class BLEManager: NSObject, ObservableObject {
     func sendCommand(_ command: BlindCommand) {
         print("[BLE] Sending command - \(command.rawValue)")
         writeCharacteristic(Constants.BLE.commandUUID, value: command.rawValue)
+    }
+
+    // MARK: - WiFi Scanning
+
+    private var wifiScanTimeoutTask: Task<Void, Never>?
+
+    @MainActor
+    func triggerWifiScan() {
+        NSLog("[BLE-WIFI-SCAN] Triggering WiFi network scan via BLE (characteristics count: %d, connected: %@)",
+              characteristics.count, connectionState == .connected ? "YES" : "NO")
+
+        // Log all available characteristics for debugging
+        let uuids = characteristics.keys.map { $0.uuidString }.sorted()
+        NSLog("[BLE-WIFI-SCAN] Available characteristics: %@", uuids.joined(separator: ", "))
+
+        // Check if the scan trigger characteristic exists
+        let hasTrigger = characteristics[Constants.BLE.wifiScanTriggerUUID] != nil
+        let hasResults = characteristics[Constants.BLE.wifiScanResultsUUID] != nil
+        NSLog("[BLE-WIFI-SCAN] Has scan trigger: %@, Has scan results: %@",
+              hasTrigger ? "YES" : "NO", hasResults ? "YES" : "NO")
+
+        if !hasTrigger {
+            NSLog("[BLE-WIFI-SCAN] ERROR: Scan trigger characteristic not found! Device may need firmware update.")
+        }
+
+        isWifiScanning = true
+        scannedWifiNetworks = []
+
+        // Cancel any previous timeout
+        wifiScanTimeoutTask?.cancel()
+
+        // This writes to the BLE characteristic to tell the ESP32 to scan for WiFi networks
+        writeCharacteristic(Constants.BLE.wifiScanTriggerUUID, value: "SCAN")
+
+        // Set a timeout - WiFi scan should complete within 20 seconds
+        wifiScanTimeoutTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 20_000_000_000) // 20 seconds
+            if !Task.isCancelled && isWifiScanning {
+                NSLog("[BLE-WIFI-SCAN] Timeout - no WiFi networks received from device")
+                isWifiScanning = false
+            }
+        }
+    }
+
+    @MainActor
+    private func parseWifiScanResults(_ jsonString: String) {
+        NSLog("[BLE] Parsing WiFi scan results: %@", jsonString)
+
+        // Cancel timeout since we received results
+        wifiScanTimeoutTask?.cancel()
+        isWifiScanning = false
+
+        guard let data = jsonString.data(using: .utf8) else {
+            NSLog("[BLE] Failed to convert WiFi scan results to data")
+            return
+        }
+
+        do {
+            let response = try JSONDecoder().decode(WiFiScanResponse.self, from: data)
+            // Sort by signal strength (strongest first)
+            scannedWifiNetworks = response.networks.sorted { $0.rssi > $1.rssi }
+            NSLog("[BLE] Parsed %d WiFi networks", scannedWifiNetworks.count)
+        } catch {
+            NSLog("[BLE] Failed to decode WiFi scan results: %@", error.localizedDescription)
+        }
     }
 
     // MARK: - Helpers
@@ -282,11 +356,12 @@ extension BLEManager: CBCentralManagerDelegate {
     }
 
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
-        print("[BLE] Connected to \(peripheral.name ?? "device")")
+        print("[BLE] Connected to \(peripheral.name ?? "device") - starting service discovery")
 
         Task { @MainActor in
             self.connectionTimer?.invalidate()
-            self.connectionState = .connected
+            // Don't set connectionState to .connected yet - wait for characteristic discovery
+            // This ensures characteristics are available before the WiFi config step triggers a scan
             self.connectedDevice?.bleConnected = true
 
             peripheral.delegate = self
@@ -315,6 +390,7 @@ extension BLEManager: CBCentralManagerDelegate {
             self.connectedDevice = nil
             self.connectedPeripheral = nil
             self.characteristics.removeAll()
+            self.pendingNotificationSubscriptions.removeAll()
         }
     }
 }
@@ -344,28 +420,49 @@ extension BLEManager: CBPeripheralDelegate {
             return
         }
 
-        guard let characteristics = service.characteristics else { return }
+        guard let discoveredCharacteristics = service.characteristics else { return }
 
-        // Process characteristics on the BLE queue (current queue)
-        for characteristic in characteristics {
-            NSLog("[BLE] Discovered characteristic: %@", characteristic.uuid.uuidString)
-
-            // Read initial values for readable characteristics
-            if characteristic.properties.contains(.read) {
-                peripheral.readValue(for: characteristic)
-            }
-
-            // Enable notifications for status
-            if characteristic.uuid == Constants.BLE.statusUUID && characteristic.properties.contains(.notify) {
-                NSLog("[BLE] Subscribing to notifications for status characteristic")
-                peripheral.setNotifyValue(true, for: characteristic)
-            }
-        }
-
-        // Store characteristics on MainActor for thread-safe access
+        // Store characteristics FIRST on MainActor, then enable notifications
+        // This ensures characteristics are available before any writes are attempted
         Task { @MainActor in
-            for characteristic in characteristics {
+            for characteristic in discoveredCharacteristics {
+                NSLog("[BLE] Storing characteristic: %@", characteristic.uuid.uuidString)
                 self.characteristics[characteristic.uuid] = characteristic
+            }
+
+            // Track which notifications we need to wait for before marking connected
+            self.pendingNotificationSubscriptions.removeAll()
+
+            // Now process characteristics (read initial values, enable notifications)
+            // This runs on MainActor but CBPeripheral methods are safe to call from any queue
+            for characteristic in discoveredCharacteristics {
+                // Read initial values for readable characteristics
+                if characteristic.properties.contains(.read) {
+                    peripheral.readValue(for: characteristic)
+                }
+
+                // Enable notifications for status and WiFi scan results
+                // We track WiFi scan results as a required subscription before marking connected
+                if characteristic.properties.contains(.notify) {
+                    if characteristic.uuid == Constants.BLE.statusUUID {
+                        NSLog("[BLE] Subscribing to notifications for status characteristic")
+                        peripheral.setNotifyValue(true, for: characteristic)
+                    } else if characteristic.uuid == Constants.BLE.wifiScanResultsUUID {
+                        NSLog("[BLE] Subscribing to notifications for WiFi scan results characteristic (REQUIRED)")
+                        self.pendingNotificationSubscriptions.insert(characteristic.uuid)
+                        peripheral.setNotifyValue(true, for: characteristic)
+                    }
+                }
+            }
+
+            // If no pending subscriptions, we can mark connected immediately
+            // Otherwise, wait for didUpdateNotificationStateFor callbacks
+            if self.pendingNotificationSubscriptions.isEmpty {
+                NSLog("[BLE] No pending subscriptions - setting state to connected")
+                self.connectionState = .connected
+            } else {
+                NSLog("[BLE] Waiting for %d notification subscription(s) to complete before marking connected",
+                      self.pendingNotificationSubscriptions.count)
             }
         }
     }
@@ -396,6 +493,9 @@ extension BLEManager: CBPeripheralDelegate {
                 NSLog("[BLE] Status characteristic updated: '%@', has callback: %@", value, self.onStatusUpdate != nil ? "YES" : "NO")
                 self.connectedDevice?.updateFromStatus(value)
                 self.onStatusUpdate?(value)
+            case Constants.BLE.wifiScanResultsUUID:
+                NSLog("[BLE] WiFi scan results received")
+                self.parseWifiScanResults(value)
             default:
                 break
             }
@@ -411,12 +511,44 @@ extension BLEManager: CBPeripheralDelegate {
     }
 
     func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
-        if let error = error {
-            NSLog("[BLE] Error updating notification state for %@: %@", characteristic.uuid.uuidString, error.localizedDescription)
-            return
+        // Check if this was a required subscription we were waiting for
+        Task { @MainActor in
+            if let error = error {
+                NSLog("[BLE] Error updating notification state for %@: %@", characteristic.uuid.uuidString, error.localizedDescription)
+
+                // If subscription failed for a required characteristic, remove it from pending
+                // and proceed anyway - we'll fall back to polling
+                if self.pendingNotificationSubscriptions.contains(characteristic.uuid) {
+                    self.pendingNotificationSubscriptions.remove(characteristic.uuid)
+                    NSLog("[BLE] Subscription failed for %@ - removing from pending (will use polling fallback), remaining: %d",
+                          characteristic.uuid.uuidString,
+                          self.pendingNotificationSubscriptions.count)
+
+                    // If all pending subscriptions are resolved (success or failure), mark as connected
+                    if self.pendingNotificationSubscriptions.isEmpty && self.connectionState != .connected {
+                        NSLog("[BLE] All subscriptions resolved - setting state to connected (some may have failed)")
+                        self.connectionState = .connected
+                    }
+                }
+                return
+            }
+
+            NSLog("[BLE] Notification state updated for %@: isNotifying=%@",
+                  characteristic.uuid.uuidString,
+                  characteristic.isNotifying ? "true" : "false")
+
+            if characteristic.isNotifying && self.pendingNotificationSubscriptions.contains(characteristic.uuid) {
+                self.pendingNotificationSubscriptions.remove(characteristic.uuid)
+                NSLog("[BLE] Required subscription confirmed for %@, remaining: %d",
+                      characteristic.uuid.uuidString,
+                      self.pendingNotificationSubscriptions.count)
+
+                // If all required subscriptions are confirmed, mark as connected
+                if self.pendingNotificationSubscriptions.isEmpty && self.connectionState != .connected {
+                    NSLog("[BLE] All required subscriptions confirmed - setting state to connected")
+                    self.connectionState = .connected
+                }
+            }
         }
-        NSLog("[BLE] Notification state updated for %@: isNotifying=%@",
-              characteristic.uuid.uuidString,
-              characteristic.isNotifying ? "true" : "false")
     }
 }

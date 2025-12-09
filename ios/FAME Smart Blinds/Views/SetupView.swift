@@ -33,6 +33,9 @@ struct SetupView: View {
                         selectedDevice: $selectedDevice,
                         onContinue: {
                             if let device = selectedDevice {
+                                // Stop BLE device scanning - we're done selecting
+                                bleManager.stopScanning()
+
                                 // Mark device as in setup to prevent HTTP discovery from
                                 // updating it and causing it to appear in configured devices
                                 registry.markDeviceInSetup(deviceId: device.deviceId)
@@ -285,11 +288,13 @@ struct WiFiConfigStep: View {
     @State private var connectionFailed = false
     @State private var timeoutTask: DispatchWorkItem?
     @State private var pollingTimer: Timer?
+    @State private var showManualEntry = false
+    @State private var selectedNetwork: WiFiNetwork?
 
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 16) {
             Image(systemName: "wifi")
-                .font(.system(size: 64))
+                .font(.system(size: 48))
                 .foregroundColor(connectionFailed ? .red : .accentColor)
 
             Text(connectionFailed ? "Connection Failed" : "Configure WiFi")
@@ -298,22 +303,99 @@ struct WiFiConfigStep: View {
 
             Text(connectionFailed
                  ? "Could not connect to the WiFi network. Please check your credentials and try again."
-                 : "Enter your WiFi credentials to connect the device to your network")
+                 : "Select a network or enter credentials manually")
+                .font(.subheadline)
                 .foregroundColor(connectionFailed ? .red : .secondary)
                 .multilineTextAlignment(.center)
+                .padding(.horizontal)
 
-            VStack(spacing: 16) {
-                TextField("WiFi Network Name (SSID)", text: $ssid)
-                    .textFieldStyle(.roundedBorder)
-                    #if os(iOS)
-                    .autocapitalization(.none)
-                    #endif
-                    .disableAutocorrection(true)
+            if showManualEntry {
+                // Manual entry mode
+                VStack(spacing: 16) {
+                    TextField("WiFi Network Name (SSID)", text: $ssid)
+                        .textFieldStyle(.roundedBorder)
+                        #if os(iOS)
+                        .autocapitalization(.none)
+                        #endif
+                        .disableAutocorrection(true)
 
-                SecureField("Password", text: $password)
-                    .textFieldStyle(.roundedBorder)
+                    SecureField("Password", text: $password)
+                        .textFieldStyle(.roundedBorder)
+
+                    Button("Show available networks") {
+                        showManualEntry = false
+                        bleManager.triggerWifiScan()
+                    }
+                    .font(.caption)
+                }
+                .padding(.horizontal)
+            } else {
+                // Network list mode
+                VStack(spacing: 8) {
+                    HStack {
+                        Text("Available Networks")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Button {
+                            bleManager.triggerWifiScan()
+                        } label: {
+                            if bleManager.isWifiScanning {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Image(systemName: "arrow.clockwise")
+                            }
+                        }
+                        .disabled(bleManager.isWifiScanning)
+                    }
+                    .padding(.horizontal)
+
+                    if bleManager.isWifiScanning && bleManager.scannedWifiNetworks.isEmpty {
+                        VStack(spacing: 8) {
+                            ProgressView()
+                            Text("Scanning for networks...")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(height: 150)
+                    } else if bleManager.scannedWifiNetworks.isEmpty {
+                        VStack(spacing: 8) {
+                            Text("No networks found")
+                                .foregroundColor(.secondary)
+                            Button("Scan for Networks") {
+                                bleManager.triggerWifiScan()
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                        .frame(height: 150)
+                    } else {
+                        List(bleManager.scannedWifiNetworks) { network in
+                            NetworkRow(network: network, isSelected: selectedNetwork?.ssid == network.ssid)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    selectedNetwork = network
+                                    ssid = network.ssid
+                                }
+                        }
+                        #if os(iOS)
+                        .listStyle(.insetGrouped)
+                        #endif
+                        .frame(height: 200)
+                    }
+
+                    Button("Enter manually") {
+                        showManualEntry = true
+                    }
+                    .font(.caption)
+                }
+
+                if selectedNetwork != nil {
+                    SecureField("Password", text: $password)
+                        .textFieldStyle(.roundedBorder)
+                        .padding(.horizontal)
+                }
             }
-            .padding(.horizontal)
 
             if !configStatus.isEmpty {
                 HStack(spacing: 8) {
@@ -335,11 +417,15 @@ struct WiFiConfigStep: View {
             .buttonStyle(.borderedProminent)
             .disabled(ssid.isEmpty || isConfiguring)
         }
-        .padding()
+        .padding(.vertical)
         .onAppear {
             // Pre-fill with existing SSID if available
             if let existingSsid = device?.wifiSsid, !existingSsid.isEmpty {
                 ssid = existingSsid
+                showManualEntry = true
+            } else {
+                // Trigger WiFi scan on appear
+                bleManager.triggerWifiScan()
             }
         }
         .onDisappear {
@@ -413,6 +499,63 @@ struct WiFiConfigStep: View {
         pollingTimer?.invalidate()
         pollingTimer = nil
         bleManager.onStatusUpdate = nil
+    }
+}
+
+// MARK: - Network Row
+
+struct NetworkRow: View {
+    let network: WiFiNetwork
+    let isSelected: Bool
+
+    var body: some View {
+        HStack {
+            Image(systemName: signalIcon)
+                .foregroundColor(signalColor)
+                .frame(width: 24)
+
+            Text(network.ssid)
+                .font(.body)
+
+            Spacer()
+
+            if network.isSecured {
+                Image(systemName: "lock.fill")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            if isSelected {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.accentColor)
+            }
+        }
+        .padding(.vertical, 4)
+        .background(isSelected ? Color.accentColor.opacity(0.1) : Color.clear)
+    }
+
+    private var signalIcon: String {
+        switch network.signalStrength {
+        case .excellent, .good:
+            return "wifi"
+        case .fair:
+            return "wifi"
+        case .weak:
+            return "wifi.exclamationmark"
+        }
+    }
+
+    private var signalColor: Color {
+        switch network.signalStrength {
+        case .excellent:
+            return .green
+        case .good:
+            return .blue
+        case .fair:
+            return .orange
+        case .weak:
+            return .red
+        }
     }
 }
 

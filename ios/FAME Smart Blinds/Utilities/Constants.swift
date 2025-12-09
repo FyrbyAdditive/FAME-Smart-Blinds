@@ -14,10 +14,13 @@ enum Constants {
         static let commandUUID = CBUUID(string: "beb5483e-36e1-4688-b7f5-ea07361b26ad")
         static let devicePasswordUUID = CBUUID(string: "beb5483e-36e1-4688-b7f5-ea07361b26ae")
         static let orientationUUID = CBUUID(string: "beb5483e-36e1-4688-b7f5-ea07361b26af")
+        static let wifiScanTriggerUUID = CBUUID(string: "beb5483e-36e1-4688-b7f5-ea07361b26b0")
+        static let wifiScanResultsUUID = CBUUID(string: "beb5483e-36e1-4688-b7f5-ea07361b26b1")
 
         static let allCharacteristicUUIDs: [CBUUID] = [
             wifiSsidUUID, wifiPasswordUUID, deviceNameUUID,
-            mqttBrokerUUID, statusUUID, commandUUID, devicePasswordUUID, orientationUUID
+            mqttBrokerUUID, statusUUID, commandUUID, devicePasswordUUID, orientationUUID,
+            wifiScanTriggerUUID, wifiScanResultsUUID
         ]
     }
 

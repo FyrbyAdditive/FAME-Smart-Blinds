@@ -13,6 +13,7 @@
 		22CBEC6E2EE89A7E009614B2 /* MQTTConfigurationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22CBEC6A2EE89A7E009614B2 /* MQTTConfigurationView.swift */; };
 		22CBEC6F2EE89A7E009614B2 /* DeviceConfigurationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22CBEC692EE89A7E009614B2 /* DeviceConfigurationView.swift */; };
 		22CBEC702EE89A7E009614B2 /* PasswordConfigurationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22CBEC6B2EE89A7E009614B2 /* PasswordConfigurationView.swift */; };
+		22CBEC722EE8B8A0009614B2 /* WiFiNetwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22CBEC712EE8B8A0009614B2 /* WiFiNetwork.swift */; };
 		2EA3C4D82A6BC92C7D366D7C /* DeviceControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F04771F83E6586A5249848A8 /* DeviceControlView.swift */; };
 		3B8E711B609221A1A037DC15 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF9610AAAC80290BDA24165D /* ContentView.swift */; };
 		77E8B69CA985334F4F0A11A7 /* SetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A53D414B528ABE2C7FA02981 /* SetupView.swift */; };
@@ -36,6 +37,7 @@
 		22CBEC6A2EE89A7E009614B2 /* MQTTConfigurationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MQTTConfigurationView.swift; sourceTree = "<group>"; };
 		22CBEC6B2EE89A7E009614B2 /* PasswordConfigurationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordConfigurationView.swift; sourceTree = "<group>"; };
 		22CBEC6C2EE89A7E009614B2 /* WiFiConfigurationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiConfigurationView.swift; sourceTree = "<group>"; };
+		22CBEC712EE8B8A0009614B2 /* WiFiNetwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiNetwork.swift; sourceTree = "<group>"; };
 		22EDA7F22EDD1B9C0025CDA6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		239F8D28B52D3163C7EB0929 /* HTTPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPClient.swift; sourceTree = "<group>"; };
 		3C0E3C777D21F4B37A257593 /* DeviceRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceRegistry.swift; sourceTree = "<group>"; };
@@ -60,6 +62,7 @@
 			isa = PBXGroup;
 			children = (
 				ED790236B0876F07EE8DC2B6 /* BlindDevice.swift */,
+				22CBEC712EE8B8A0009614B2 /* WiFiNetwork.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -207,6 +210,7 @@
 				22CBEC6D2EE89A7E009614B2 /* WiFiConfigurationView.swift in Sources */,
 				22CBEC6E2EE89A7E009614B2 /* MQTTConfigurationView.swift in Sources */,
 				22CBEC6F2EE89A7E009614B2 /* DeviceConfigurationView.swift in Sources */,
+				22CBEC722EE8B8A0009614B2 /* WiFiNetwork.swift in Sources */,
 				22CBEC702EE89A7E009614B2 /* PasswordConfigurationView.swift in Sources */,
 				E1DC1619AAD25D3867661F43 /* CalibrationView.swift in Sources */,
 				FEE78385BB6A104F1EA71DE8 /* Constants.swift in Sources */,

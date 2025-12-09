@@ -54,6 +54,13 @@ struct PasswordConfigurationView: View {
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") {
+                    dismiss()
+                }
+            }
+        }
         .alert("Error", isPresented: $showingError) {
             Button("OK", role: .cancel) {}
         } message: {
