@@ -18,11 +18,16 @@ ARCHIVE_DIR="$BUILD_DIR/archives"
 EXPORT_DIR="$BUILD_DIR/export"
 PKG_DIR="$BUILD_DIR/packages"
 
-# Extract version info from project
+# Extract version info from Xcode build settings (Release configuration)
 get_version_info() {
-    local pbxproj="$PROJECT_PATH/project.pbxproj"
-    MARKETING_VERSION=$(grep -m1 'MARKETING_VERSION' "$pbxproj" | sed 's/.*= *\(.*\);/\1/' | tr -d ' "')
-    BUILD_NUMBER=$(grep -m1 'CURRENT_PROJECT_VERSION' "$pbxproj" | sed 's/.*= *\(.*\);/\1/' | tr -d ' "')
+    echo "Reading version from Xcode build settings..."
+
+    # Use xcodebuild to get the actual resolved build settings for Release
+    local build_settings
+    build_settings=$(xcodebuild -project "$PROJECT_PATH" -scheme "$SCHEME" -configuration "$CONFIGURATION" -showBuildSettings 2>/dev/null)
+
+    MARKETING_VERSION=$(echo "$build_settings" | grep -m1 'MARKETING_VERSION = ' | sed 's/.*= //' | tr -d ' ')
+    BUILD_NUMBER=$(echo "$build_settings" | grep -m1 'CURRENT_PROJECT_VERSION = ' | sed 's/.*= //' | tr -d ' ')
 
     if [ -z "$MARKETING_VERSION" ]; then
         MARKETING_VERSION="1.0.0"
