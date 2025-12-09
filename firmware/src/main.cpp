@@ -31,6 +31,7 @@ void onWifiDisconnected();
 void onWifiConnectionFailed();
 void onBleWifiConfig(const String& ssid, const String& password);
 void onBleMqttConfig(const String& broker, uint16_t port);
+void onHttpMqttConfig(const String& broker, uint16_t port, const String& user, const String& password);
 void onBleDeviceName(const String& name);
 void onBleDevicePassword(const String& password);
 void onBleOrientation(const String& orientation);
@@ -132,6 +133,9 @@ void setup() {
     // Set HTTP command callback
     httpServer.onCommand(handleCommand);
 
+    // Set HTTP MQTT config callback
+    httpServer.onMqttConfig(onHttpMqttConfig);
+
     // Set up log broadcast callback (for SSE log streaming)
     Logger::setLogBroadcastCallback([](const char* logEntry) {
         httpServer.broadcastLog(logEntry);
@@ -174,8 +178,8 @@ void loop() {
     hallSensor.update();
     servo.update();
 
-    // Update MQTT if we have config
-    if (config.hasMqttConfig()) {
+    // Update MQTT if enabled
+    if (mqtt.isEnabled()) {
         mqtt.update();
     }
 
@@ -361,6 +365,28 @@ void onBleMqttConfig(const String& broker, uint16_t port) {
     }
 }
 
+void onHttpMqttConfig(const String& broker, uint16_t port,
+                      const String& user, const String& password) {
+    LOG_HTTP("Received MQTT config - Broker: %s:%d", broker.c_str(), port);
+
+    // Update config struct
+    strncpy(config.mqttBroker, broker.c_str(), sizeof(config.mqttBroker) - 1);
+    config.mqttPort = port;
+    strncpy(config.mqttUser, user.c_str(), sizeof(config.mqttUser) - 1);
+    strncpy(config.mqttPassword, password.c_str(), sizeof(config.mqttPassword) - 1);
+
+    if (broker.isEmpty()) {
+        // Disable MQTT
+        mqtt.disable();
+    } else {
+        // Reinitialize and connect MQTT with new settings
+        mqtt.init(broker, port, user, password);
+        if (wifi.isConnected()) {
+            mqtt.connect();
+        }
+    }
+}
+
 void onBleDeviceName(const String& name) {
     LOG_BLE("Received device name: %s", name.c_str());
 
@@ -424,7 +450,7 @@ void updateBleStatus() {
         status = "wifi:" + wifi.getIPAddress();
         if (mqtt.isConnected()) {
             status += ",mqtt:ok";
-        } else if (config.hasMqttConfig()) {
+        } else if (mqtt.isEnabled()) {
             status += ",mqtt:disconnected";
         }
     } else if (wifi.getState() == WifiState::CONNECTING) {

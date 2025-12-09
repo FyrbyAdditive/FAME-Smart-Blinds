@@ -62,6 +62,10 @@ void HttpServer::onCommand(HttpCommandCallback callback) {
     _commandCallback = callback;
 }
 
+void HttpServer::onMqttConfig(HttpMqttConfigCallback callback) {
+    _mqttConfigCallback = callback;
+}
+
 void HttpServer::updateState(const char* state) {
     _currentState = state;
 }
@@ -359,18 +363,26 @@ void HttpServer::setupRoutes() {
         }
 
         if (broker.isEmpty()) {
-            LOG_HTTP("POST /mqtt - missing broker parameter");
-            request->send(400, "application/json", "{\"error\":\"Missing broker parameter\"}");
-            return;
+            LOG_HTTP("POST /mqtt - clearing MQTT configuration (disabled)");
+        } else {
+            LOG_HTTP("POST /mqtt: %s:%d", broker.c_str(), port);
         }
 
-        LOG_HTTP("POST /mqtt: %s:%d", broker.c_str(), port);
         storage.setMqttConfig(broker, port, user, password);
+
+        // Notify callback to update MQTT client at runtime
+        if (_mqttConfigCallback) {
+            _mqttConfigCallback(broker, port, user, password);
+        }
 
         JsonDocument response;
         response["success"] = true;
-        response["broker"] = broker;
-        response["port"] = port;
+        if (broker.isEmpty()) {
+            response["message"] = "MQTT disabled";
+        } else {
+            response["broker"] = broker;
+            response["port"] = port;
+        }
 
         String responseStr;
         serializeJson(response, responseStr);

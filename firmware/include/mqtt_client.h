@@ -18,7 +18,9 @@ public:
     // Connection management
     bool connect();
     void disconnect();
+    void disable();  // Disconnect and clear config (disables MQTT)
     bool isConnected();
+    bool isEnabled() const;  // Returns true if broker is configured
 
     // Update loop (handles reconnection, message processing)
     void update();

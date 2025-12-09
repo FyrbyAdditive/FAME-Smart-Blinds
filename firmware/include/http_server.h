@@ -8,6 +8,10 @@
 // Command callback type
 using HttpCommandCallback = std::function<void(const String& action)>;
 
+// MQTT config callback type (broker, port, user, password)
+using HttpMqttConfigCallback = std::function<void(const String& broker, uint16_t port,
+                                                   const String& user, const String& password)>;
+
 class HttpServer {
 public:
     HttpServer();
@@ -26,6 +30,9 @@ public:
 
     // Set callback for blind commands
     void onCommand(HttpCommandCallback callback);
+
+    // Set callback for MQTT configuration changes
+    void onMqttConfig(HttpMqttConfigCallback callback);
 
     // Update device state (for status endpoint)
     void updateState(const char* state);
@@ -51,6 +58,7 @@ private:
     bool _running;
     bool _pendingRestart = false;
     HttpCommandCallback _commandCallback;
+    HttpMqttConfigCallback _mqttConfigCallback;
 
     // Current state for status endpoint
     String _currentState;

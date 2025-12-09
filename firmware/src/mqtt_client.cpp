@@ -117,8 +117,23 @@ void MqttClient::disconnect() {
     }
 }
 
+void MqttClient::disable() {
+    LOG_MQTT("Disabling MQTT client");
+    disconnect();
+    _broker = "";
+    _port = MQTT_PORT;
+    _user = "";
+    _password = "";
+    _initialized = false;
+    _discoveryPublished = false;
+}
+
 bool MqttClient::isConnected() {
     return mqttClient.connected();
+}
+
+bool MqttClient::isEnabled() const {
+    return _initialized && !_broker.isEmpty();
 }
 
 void MqttClient::update() {
