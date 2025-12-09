@@ -24,6 +24,8 @@ struct DeviceSettingsView: View {
     @EnvironmentObject var httpClient: HTTPClient
     @Environment(\.dismiss) private var dismiss
 
+    var onFactoryReset: (() -> Void)?
+
     @State private var firmwareVersion: String = "Unknown"
     @State private var currentOrientation: DeviceOrientation = .left
     @State private var isLoadingInfo = false
@@ -135,26 +137,23 @@ struct DeviceSettingsView: View {
 
                 // Configuration Section
                 Section("Configuration") {
-                    NavigationLink {
-                        WiFiConfigurationView(device: device)
-                    } label: {
+                    NavigationLink(destination: WiFiConfigurationView(device: device)) {
                         Label("WiFi", systemImage: "wifi")
                     }
                     .disabled(device.ipAddress == nil)
+                    .id("wifi-nav")
 
-                    NavigationLink {
-                        MQTTConfigurationView(device: device)
-                    } label: {
+                    NavigationLink(destination: MQTTConfigurationView(device: device)) {
                         Label("MQTT", systemImage: "server.rack")
                     }
                     .disabled(device.ipAddress == nil)
+                    .id("mqtt-nav")
 
-                    NavigationLink {
-                        PasswordConfigurationView(device: device)
-                    } label: {
+                    NavigationLink(destination: PasswordConfigurationView(device: device)) {
                         Label("Password", systemImage: "lock")
                     }
                     .disabled(device.ipAddress == nil)
+                    .id("password-nav")
                 }
 
                 // Firmware Section
@@ -507,9 +506,10 @@ struct DeviceSettingsView: View {
                     // Remove the device from the registry so it can be rediscovered
                     DeviceRegistry.shared.remove(deviceId: device.deviceId)
 
-                    // Dismiss after a short delay
+                    // Dismiss and notify parent to also dismiss
                     DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                         dismiss()
+                        onFactoryReset?()
                     }
                 }
             } catch {

@@ -87,7 +87,10 @@ struct DeviceControlView: View {
                 .environmentObject(httpClient)
         }
         .fullScreenCover(isPresented: $showingSettings) {
-            DeviceSettingsView(device: device)
+            DeviceSettingsView(device: device, onFactoryReset: {
+                // Dismiss this view to return to device list after factory reset
+                dismiss()
+            })
                 .environmentObject(httpClient)
         }
         #else
@@ -96,7 +99,10 @@ struct DeviceControlView: View {
                 .environmentObject(httpClient)
         }
         .sheet(isPresented: $showingSettings) {
-            DeviceSettingsView(device: device)
+            DeviceSettingsView(device: device, onFactoryReset: {
+                // Dismiss this view to return to device list after factory reset
+                dismiss()
+            })
                 .environmentObject(httpClient)
         }
         #endif
