@@ -19,6 +19,9 @@ class SSEClient: NSObject, ObservableObject {
     private var endpoint: SSEEndpoint = .status
     private var buffer = Data()
 
+    // Serial queue for thread-safe buffer access
+    private let bufferQueue = DispatchQueue(label: "com.famesmartblinds.sseclient.buffer")
+
     // Callback for status updates
     var onStatusUpdate: ((DeviceStatus) -> Void)?
 
@@ -59,7 +62,10 @@ class SSEClient: NSObject, ObservableObject {
         dataTask = nil
         urlSession?.invalidateAndCancel()
         urlSession = nil
-        buffer = Data()
+
+        bufferQueue.sync {
+            buffer = Data()
+        }
 
         DispatchQueue.main.async {
             self.isConnected = false
@@ -197,8 +203,10 @@ extension SSEClient: URLSessionDataDelegate {
     }
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
-        buffer.append(data)
-        processBuffer()
+        bufferQueue.async { [weak self] in
+            self?.buffer.append(data)
+            self?.processBuffer()
+        }
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
