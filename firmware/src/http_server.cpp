@@ -13,10 +13,39 @@ static AsyncWebServer server(HTTP_PORT);
 // SSE event source for real-time status updates
 static AsyncEventSource events("/events");
 
+// Forward declaration for auth helper
+extern Storage storage;
+
+// Authentication helper - checks X-Device-Password header
+// Returns true if auth passes (no password set, or correct password provided)
+// Returns false and sends 401 if auth fails
+static bool checkAuth(AsyncWebServerRequest *request) {
+    String storedPassword = storage.getDevicePassword();
+
+    // If no password is set, allow access
+    if (storedPassword.isEmpty()) {
+        return true;
+    }
+
+    // Check for X-Device-Password header
+    if (!request->hasHeader("X-Device-Password")) {
+        LOG_HTTP("Auth failed: missing X-Device-Password header");
+        request->send(401, "application/json", "{\"error\":\"Authentication required\"}");
+        return false;
+    }
+
+    String providedPassword = request->header("X-Device-Password");
+    if (providedPassword != storedPassword) {
+        LOG_HTTP("Auth failed: incorrect password");
+        request->send(401, "application/json", "{\"error\":\"Invalid password\"}");
+        return false;
+    }
+
+    return true;
+}
+
 // Separate SSE event source for log streaming (to avoid overwhelming device)
 static AsyncEventSource logEvents("/events/logs");
-
-extern Storage storage;
 
 HttpServer::HttpServer()
     : _running(false)
@@ -97,8 +126,8 @@ void HttpServer::updateHallSensor(bool rawState, bool triggered, uint32_t trigge
 void HttpServer::setupRoutes() {
     // CORS headers for all responses
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
-    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Content-Type");
+    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
+    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Content-Type, X-Device-Password");
 
     // Handle preflight requests
     server.onNotFound([](AsyncWebServerRequest *request) {
@@ -121,15 +150,17 @@ void HttpServer::setupRoutes() {
         request->send(200, "application/json", buildInfoJson());
     });
 
-    // POST /command - Control the blind
+    // POST /command - Control the blind (PROTECTED)
     server.on("/command", HTTP_POST,
         [](AsyncWebServerRequest *request) {
             // This handler is for when there's no body
+            if (!checkAuth(request)) return;
             request->send(400, "application/json", "{\"error\":\"No body\"}");
         },
         NULL,  // No upload handler
         [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
-            // Body handler
+            // Body handler - auth check
+            if (!checkAuth(request)) return;
             String body = String((char*)data).substring(0, len);
             LOG_HTTP("POST /command: %s", body.c_str());
 
@@ -171,8 +202,9 @@ void HttpServer::setupRoutes() {
         request->send(200, "application/json", "{\"status\":\"ok\",\"device\":\"FAMESmartBlinds\"}");
     });
 
-    // POST /open - Quick open command
+    // POST /open - Quick open command (PROTECTED)
     server.on("/open", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        if (!checkAuth(request)) return;
         LOG_HTTP("POST /open");
         if (_commandCallback) {
             _commandCallback("OPEN");
@@ -180,8 +212,9 @@ void HttpServer::setupRoutes() {
         request->send(200, "application/json", "{\"success\":true,\"action\":\"OPEN\"}");
     });
 
-    // POST /close - Quick close command
+    // POST /close - Quick close command (PROTECTED)
     server.on("/close", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        if (!checkAuth(request)) return;
         LOG_HTTP("POST /close");
         if (_commandCallback) {
             _commandCallback("CLOSE");
@@ -189,8 +222,9 @@ void HttpServer::setupRoutes() {
         request->send(200, "application/json", "{\"success\":true,\"action\":\"CLOSE\"}");
     });
 
-    // POST /stop - Quick stop command
+    // POST /stop - Quick stop command (PROTECTED)
     server.on("/stop", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        if (!checkAuth(request)) return;
         LOG_HTTP("POST /stop");
         if (_commandCallback) {
             _commandCallback("STOP");
@@ -202,8 +236,9 @@ void HttpServer::setupRoutes() {
     // Calibration Endpoints
     // =====================
 
-    // POST /calibrate/start - Begin calibration (find home)
+    // POST /calibrate/start - Begin calibration (find home) (PROTECTED)
     server.on("/calibrate/start", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        if (!checkAuth(request)) return;
         LOG_HTTP("POST /calibrate/start");
         if (_commandCallback) {
             _commandCallback("CALIBRATE_START");
@@ -211,8 +246,9 @@ void HttpServer::setupRoutes() {
         request->send(200, "application/json", "{\"success\":true,\"action\":\"CALIBRATE_START\"}");
     });
 
-    // POST /calibrate/setbottom - Confirm bottom position
+    // POST /calibrate/setbottom - Confirm bottom position (PROTECTED)
     server.on("/calibrate/setbottom", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        if (!checkAuth(request)) return;
         LOG_HTTP("POST /calibrate/setbottom");
         if (_commandCallback) {
             _commandCallback("CALIBRATE_SETBOTTOM");
@@ -220,8 +256,9 @@ void HttpServer::setupRoutes() {
         request->send(200, "application/json", "{\"success\":true,\"action\":\"CALIBRATE_SETBOTTOM\"}");
     });
 
-    // POST /calibrate/cancel - Cancel calibration
+    // POST /calibrate/cancel - Cancel calibration (PROTECTED)
     server.on("/calibrate/cancel", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        if (!checkAuth(request)) return;
         LOG_HTTP("POST /calibrate/cancel");
         if (_commandCallback) {
             _commandCallback("CALIBRATE_CANCEL");
@@ -229,8 +266,9 @@ void HttpServer::setupRoutes() {
         request->send(200, "application/json", "{\"success\":true,\"action\":\"CALIBRATE_CANCEL\"}");
     });
 
-    // GET /calibrate/status - Get calibration state
+    // GET /calibrate/status - Get calibration state (PROTECTED)
     server.on("/calibrate/status", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (!checkAuth(request)) return;
         LOG_HTTP("GET /calibrate/status");
         JsonDocument doc;
         doc["calibrated"] = _calibrated;
@@ -243,8 +281,9 @@ void HttpServer::setupRoutes() {
         request->send(200, "application/json", output);
     });
 
-    // POST /open/force - Force open (bypass limits)
+    // POST /open/force - Force open (bypass limits) (PROTECTED)
     server.on("/open/force", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        if (!checkAuth(request)) return;
         LOG_HTTP("POST /open/force");
         if (_commandCallback) {
             _commandCallback("OPEN_FORCE");
@@ -252,8 +291,9 @@ void HttpServer::setupRoutes() {
         request->send(200, "application/json", "{\"success\":true,\"action\":\"OPEN_FORCE\"}");
     });
 
-    // POST /close/force - Force close (bypass limits)
+    // POST /close/force - Force close (bypass limits) (PROTECTED)
     server.on("/close/force", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        if (!checkAuth(request)) return;
         LOG_HTTP("POST /close/force");
         if (_commandCallback) {
             _commandCallback("CLOSE_FORCE");
@@ -261,8 +301,9 @@ void HttpServer::setupRoutes() {
         request->send(200, "application/json", "{\"success\":true,\"action\":\"CLOSE_FORCE\"}");
     });
 
-    // GET /hall - Get hall sensor debug info
+    // GET /hall - Get hall sensor debug info (PROTECTED)
     server.on("/hall", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (!checkAuth(request)) return;
         LOG_HTTP("GET /hall");
         JsonDocument doc;
         doc["rawState"] = _hallRawState ? "HIGH" : "LOW";
@@ -275,16 +316,18 @@ void HttpServer::setupRoutes() {
         request->send(200, "application/json", output);
     });
 
-    // POST /restart - Restart the device
+    // POST /restart - Restart the device (PROTECTED)
     server.on("/restart", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        if (!checkAuth(request)) return;
         LOG_HTTP("POST /restart");
         request->send(200, "application/json", "{\"success\":true,\"action\":\"RESTART\"}");
         // Set flag to restart after response is sent (handled in main loop)
         _pendingRestart = true;
     });
 
-    // POST /name - Set device name
+    // POST /name - Set device name (PROTECTED)
     server.on("/name", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        if (!checkAuth(request)) return;
         String name = "";
         if (request->hasParam("name", false)) {
             name = request->getParam("name", false)->value();
@@ -310,8 +353,9 @@ void HttpServer::setupRoutes() {
         request->send(200, "application/json", responseStr);
     });
 
-    // POST /password - Set device password
+    // POST /password - Set device password (PROTECTED)
     server.on("/password", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        if (!checkAuth(request)) return;
         String password = "";
         if (request->hasParam("password", false)) {
             password = request->getParam("password", false)->value();
@@ -331,8 +375,9 @@ void HttpServer::setupRoutes() {
         request->send(200, "application/json", responseStr);
     });
 
-    // POST /mqtt - Set MQTT configuration
+    // POST /mqtt - Set MQTT configuration (PROTECTED)
     server.on("/mqtt", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        if (!checkAuth(request)) return;
         String broker = "";
         uint16_t port = 1883;
         String user = "";
@@ -389,8 +434,9 @@ void HttpServer::setupRoutes() {
         request->send(200, "application/json", responseStr);
     });
 
-    // POST /factory-reset - Factory reset the device (clear all settings)
+    // POST /factory-reset - Factory reset the device (clear all settings) (PROTECTED)
     server.on("/factory-reset", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        if (!checkAuth(request)) return;
         LOG_HTTP("POST /factory-reset - Erasing all settings");
 
         // Clear all NVS storage
@@ -403,22 +449,25 @@ void HttpServer::setupRoutes() {
         _pendingRestart = true;
     });
 
-    // GET /logs - Get device logs (ring buffer)
+    // GET /logs - Get device logs (ring buffer) (PROTECTED)
     server.on("/logs", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (!checkAuth(request)) return;
         LOG_HTTP("GET /logs");
         String logsJson = Logger::getLogsJson();
         request->send(200, "application/json", "{\"logs\":" + logsJson + "}");
     });
 
-    // DELETE /logs - Clear device logs
+    // DELETE /logs - Clear device logs (PROTECTED)
     server.on("/logs", HTTP_DELETE, [this](AsyncWebServerRequest *request) {
+        if (!checkAuth(request)) return;
         LOG_HTTP("DELETE /logs");
         Logger::clearBuffer();
         request->send(200, "application/json", "{\"success\":true,\"message\":\"Logs cleared\"}");
     });
 
-    // POST /wifi - Set WiFi configuration (for reconfiguration)
+    // POST /wifi - Set WiFi configuration (for reconfiguration) (PROTECTED)
     server.on("/wifi", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        if (!checkAuth(request)) return;
         String ssid = "";
         String password = "";
 
@@ -453,8 +502,9 @@ void HttpServer::setupRoutes() {
         request->send(200, "application/json", responseStr);
     });
 
-    // POST /orientation - Set device orientation (left or right)
+    // POST /orientation - Set device orientation (left or right) (PROTECTED)
     server.on("/orientation", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        if (!checkAuth(request)) return;
         String orientation = "";
         if (request->hasParam("orientation", false)) {
             orientation = request->getParam("orientation", false)->value();
@@ -500,8 +550,9 @@ void HttpServer::setupRoutes() {
         request->send(200, "application/json", responseStr);
     });
 
-    // POST /speed - Set servo speed (0-4095)
+    // POST /speed - Set servo speed (0-4095) (PROTECTED)
     server.on("/speed", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        if (!checkAuth(request)) return;
         if (!request->hasParam("value", true)) {
             request->send(400, "application/json", "{\"error\":\"Missing 'value' parameter\"}");
             return;
@@ -587,6 +638,9 @@ String HttpServer::buildInfoJson() {
     doc["mqttPort"] = storage.getMqttPort();
     doc["mqttUser"] = storage.getMqttUser();
 
+    // Authentication info - tells apps whether a password is required
+    doc["passwordRequired"] = !storage.getDevicePassword().isEmpty();
+
     JsonObject endpoints = doc["endpoints"].to<JsonObject>();
     endpoints["status"] = "GET /status";
     endpoints["info"] = "GET /info";
@@ -602,7 +656,7 @@ String HttpServer::buildInfoJson() {
 }
 
 void HttpServer::setupOTARoutes() {
-    // POST /update - OTA firmware update (multipart file upload)
+    // POST /update - OTA firmware update (multipart file upload) (PROTECTED)
     server.on("/update", HTTP_POST,
         // Response handler (called after upload completes)
         [this](AsyncWebServerRequest *request) {
@@ -619,10 +673,13 @@ void HttpServer::setupOTARoutes() {
                 _pendingRestart = true;
             }
         },
-        // File upload handler (called for multipart file uploads)
+        // File upload handler (called for multipart file uploads) - auth checked here
         [this](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
             if (index == 0) {
-                // First chunk - initialize update
+                // First chunk - check auth before allowing update
+                if (!checkAuth(request)) return;
+
+                // Initialize update
                 LOG_HTTP("OTA update starting: %s (content-length header may include multipart overhead)", filename.c_str());
                 _otaInProgress = true;
                 _otaReceived = 0;
@@ -637,6 +694,9 @@ void HttpServer::setupOTARoutes() {
                 }
                 LOG_HTTP("OTA Update.begin() successful");
             }
+
+            // Skip processing if OTA not started (auth failed)
+            if (!_otaInProgress) return;
 
             if (len > 0) {
                 // Write chunk
@@ -666,8 +726,9 @@ void HttpServer::setupOTARoutes() {
         }
     );
 
-    // GET /update/status - Check OTA status
+    // GET /update/status - Check OTA status (PROTECTED)
     server.on("/update/status", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (!checkAuth(request)) return;
         JsonDocument doc;
         doc["inProgress"] = _otaInProgress;
         doc["received"] = _otaReceived;
@@ -690,8 +751,9 @@ void HttpServer::setupOTARoutes() {
     // 4. GET /ota/status - Check progress
     // ========================================
 
-    // POST /ota/begin - Initialize chunked OTA update
+    // POST /ota/begin - Initialize chunked OTA update (PROTECTED)
     server.on("/ota/begin", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        if (!checkAuth(request)) return;
         if (!request->hasParam("size")) {
             request->send(400, "application/json", "{\"success\":false,\"error\":\"Missing size parameter\"}");
             return;
@@ -794,8 +856,9 @@ void HttpServer::setupOTARoutes() {
         }
     );
 
-    // POST /ota/end - Finalize OTA update
+    // POST /ota/end - Finalize OTA update (PROTECTED)
     server.on("/ota/end", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        if (!checkAuth(request)) return;
         if (!_otaInProgress) {
             request->send(400, "application/json", "{\"success\":false,\"error\":\"No OTA in progress\"}");
             return;
@@ -825,8 +888,9 @@ void HttpServer::setupOTARoutes() {
         _pendingRestart = true;
     });
 
-    // POST /ota/abort - Cancel OTA update
+    // POST /ota/abort - Cancel OTA update (PROTECTED)
     server.on("/ota/abort", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        if (!checkAuth(request)) return;
         if (_otaInProgress) {
             Update.abort();
             _otaInProgress = false;
@@ -837,8 +901,9 @@ void HttpServer::setupOTARoutes() {
         request->send(200, "application/json", "{\"success\":true,\"message\":\"OTA aborted\"}");
     });
 
-    // GET /ota/status - Get current OTA status
+    // GET /ota/status - Get current OTA status (PROTECTED)
     server.on("/ota/status", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (!checkAuth(request)) return;
         JsonDocument doc;
         doc["inProgress"] = _otaInProgress;
         doc["received"] = _otaReceived;
@@ -857,7 +922,24 @@ void HttpServer::setupOTARoutes() {
 }
 
 void HttpServer::setupSSE() {
-    // Configure SSE event source for status updates
+    // Configure SSE event source for status updates (PROTECTED)
+    // Use authorizeConnect to check auth before allowing connection
+    events.authorizeConnect([](AsyncWebServerRequest *request) {
+        String storedPassword = storage.getDevicePassword();
+        if (storedPassword.isEmpty()) {
+            return true;  // No password set, allow
+        }
+        if (!request->hasHeader("X-Device-Password")) {
+            LOG_HTTP("SSE /events auth failed: missing header");
+            return false;
+        }
+        if (request->header("X-Device-Password") != storedPassword) {
+            LOG_HTTP("SSE /events auth failed: wrong password");
+            return false;
+        }
+        return true;
+    });
+
     events.onConnect([](AsyncEventSourceClient *client) {
         if (client->lastId()) {
             LOG_HTTP("SSE status client reconnected, last ID: %u", client->lastId());
@@ -868,7 +950,23 @@ void HttpServer::setupSSE() {
         client->send("connected", "open", millis());
     });
 
-    // Configure separate SSE event source for log streaming
+    // Configure separate SSE event source for log streaming (PROTECTED)
+    logEvents.authorizeConnect([](AsyncWebServerRequest *request) {
+        String storedPassword = storage.getDevicePassword();
+        if (storedPassword.isEmpty()) {
+            return true;  // No password set, allow
+        }
+        if (!request->hasHeader("X-Device-Password")) {
+            LOG_HTTP("SSE /events/logs auth failed: missing header");
+            return false;
+        }
+        if (request->header("X-Device-Password") != storedPassword) {
+            LOG_HTTP("SSE /events/logs auth failed: wrong password");
+            return false;
+        }
+        return true;
+    });
+
     logEvents.onConnect([](AsyncEventSourceClient *client) {
         if (client->lastId()) {
             LOG_HTTP("SSE log client reconnected, last ID: %u", client->lastId());
