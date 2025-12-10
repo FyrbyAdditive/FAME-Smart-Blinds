@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fyrbyadditive.famesmartblinds.data.model.BlindDevice
+import com.fyrbyadditive.famesmartblinds.data.remote.AuthenticationRequiredException
 import com.fyrbyadditive.famesmartblinds.data.remote.HttpClient
 import com.fyrbyadditive.famesmartblinds.data.repository.DeviceRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -114,12 +115,15 @@ class DeviceConfigurationViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                httpClient.setWifiCredentials(ssid, _wifiPassword.value, ip)
+                httpClient.setWifiCredentials(ssid, _wifiPassword.value, ip, deviceId)
                 _isSavingWifi.value = false
                 _successMessage.value = "WiFi settings saved. The device is restarting..."
                 // Clear fields after success
                 _wifiSsid.value = ""
                 _wifiPassword.value = ""
+            } catch (e: AuthenticationRequiredException) {
+                _isSavingWifi.value = false
+                // Auth modal will be shown by AuthenticationManager
             } catch (e: Exception) {
                 _isSavingWifi.value = false
                 _errorMessage.value = e.message
@@ -159,10 +163,14 @@ class DeviceConfigurationViewModel @Inject constructor(
                     port = port,
                     user = _mqttUser.value,
                     password = _mqttPassword.value,
-                    ipAddress = ip
+                    ipAddress = ip,
+                    deviceId = deviceId
                 )
                 _isSavingMqtt.value = false
                 _successMessage.value = "MQTT settings saved successfully."
+            } catch (e: AuthenticationRequiredException) {
+                _isSavingMqtt.value = false
+                // Auth modal will be shown by AuthenticationManager
             } catch (e: Exception) {
                 _isSavingMqtt.value = false
                 _errorMessage.value = e.message
@@ -187,7 +195,7 @@ class DeviceConfigurationViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                httpClient.setDevicePassword(_devicePassword.value, ip)
+                httpClient.setDevicePassword(_devicePassword.value, ip, deviceId)
                 _isSavingPassword.value = false
                 _successMessage.value = if (_devicePassword.value.isEmpty()) {
                     "Password protection removed."
@@ -197,6 +205,9 @@ class DeviceConfigurationViewModel @Inject constructor(
                 // Clear fields after success
                 _devicePassword.value = ""
                 _confirmPassword.value = ""
+            } catch (e: AuthenticationRequiredException) {
+                _isSavingPassword.value = false
+                // Auth modal will be shown by AuthenticationManager
             } catch (e: Exception) {
                 _isSavingPassword.value = false
                 _errorMessage.value = e.message

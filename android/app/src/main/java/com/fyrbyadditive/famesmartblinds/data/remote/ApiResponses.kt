@@ -40,13 +40,17 @@ data class DeviceInfo(
     val wifiSsid: String?,
     val mqttBroker: String?,
     val mqttPort: Int?,
-    val mqttUser: String?
+    val mqttUser: String?,
+    val passwordRequired: Boolean?
 ) {
     val deviceOrientation: DeviceOrientation
         get() = DeviceOrientation.fromString(orientation)
 
     val servoSpeed: Int
         get() = speed ?: 500
+
+    val requiresPassword: Boolean
+        get() = passwordRequired == true
 }
 
 /**

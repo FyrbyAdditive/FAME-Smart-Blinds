@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fyrbyadditive.famesmartblinds.data.model.BlindCommand
 import com.fyrbyadditive.famesmartblinds.data.model.BlindDevice
+import com.fyrbyadditive.famesmartblinds.data.remote.AuthenticationRequiredException
 import com.fyrbyadditive.famesmartblinds.data.remote.HttpClient
 import com.fyrbyadditive.famesmartblinds.data.repository.DeviceRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -72,7 +73,7 @@ class CalibrationViewModel @Inject constructor(
                 if (ip != null) {
                     try {
                         // Cancel on firmware to reset state to idle
-                        httpClient.cancelCalibration(ip)
+                        httpClient.cancelCalibration(ip, deviceId)
                         Log.i(TAG, "Reset firmware calibration state from complete to idle")
                     } catch (e: Exception) {
                         Log.w(TAG, "Failed to reset firmware calibration state: ${e.message}")
@@ -106,8 +107,10 @@ class CalibrationViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                httpClient.startCalibration(ip)
+                httpClient.startCalibration(ip, deviceId)
                 refreshStatus()
+            } catch (e: AuthenticationRequiredException) {
+                // Auth modal will be shown by AuthenticationManager
             } catch (e: Exception) {
                 _errorMessage.value = e.message
             } finally {
@@ -122,8 +125,10 @@ class CalibrationViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                httpClient.setBottomPosition(ip)
+                httpClient.setBottomPosition(ip, deviceId)
                 refreshStatus()
+            } catch (e: AuthenticationRequiredException) {
+                // Auth modal will be shown by AuthenticationManager
             } catch (e: Exception) {
                 _errorMessage.value = e.message
             } finally {
@@ -138,8 +143,10 @@ class CalibrationViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                httpClient.cancelCalibration(ip)
+                httpClient.cancelCalibration(ip, deviceId)
                 refreshStatus()
+            } catch (e: AuthenticationRequiredException) {
+                // Auth modal will be shown by AuthenticationManager
             } catch (e: Exception) {
                 _errorMessage.value = e.message
             } finally {
@@ -153,7 +160,9 @@ class CalibrationViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 // During calibration, use force to bypass limits
-                httpClient.openForce(ip)
+                httpClient.openForce(ip, deviceId)
+            } catch (e: AuthenticationRequiredException) {
+                // Auth modal will be shown by AuthenticationManager
             } catch (e: Exception) {
                 _errorMessage.value = e.message
             }
@@ -165,7 +174,9 @@ class CalibrationViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 // During calibration, use force to bypass limits
-                httpClient.closeForce(ip)
+                httpClient.closeForce(ip, deviceId)
+            } catch (e: AuthenticationRequiredException) {
+                // Auth modal will be shown by AuthenticationManager
             } catch (e: Exception) {
                 _errorMessage.value = e.message
             }
@@ -176,7 +187,9 @@ class CalibrationViewModel @Inject constructor(
         val ip = _device.value?.ipAddress ?: return
         viewModelScope.launch {
             try {
-                httpClient.sendCommand(BlindCommand.STOP, ip)
+                httpClient.sendCommand(BlindCommand.STOP, ip, deviceId)
+            } catch (e: AuthenticationRequiredException) {
+                // Auth modal will be shown by AuthenticationManager
             } catch (e: Exception) {
                 _errorMessage.value = e.message
             }
@@ -201,7 +214,7 @@ class CalibrationViewModel @Inject constructor(
     private suspend fun refreshStatus() {
         val ip = _device.value?.ipAddress ?: return
         try {
-            val status = httpClient.getCalibrationStatus(ip)
+            val status = httpClient.getCalibrationStatus(ip, deviceId)
             deviceRepository.updateDevice(deviceId) { it.updateFromCalibrationStatus(status) }
         } catch (e: Exception) {
             // Silently ignore polling errors

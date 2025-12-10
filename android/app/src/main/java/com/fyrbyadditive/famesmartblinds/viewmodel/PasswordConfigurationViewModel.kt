@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fyrbyadditive.famesmartblinds.data.model.BlindDevice
+import com.fyrbyadditive.famesmartblinds.data.remote.AuthenticationRequiredException
 import com.fyrbyadditive.famesmartblinds.data.remote.HttpClient
 import com.fyrbyadditive.famesmartblinds.data.repository.DeviceRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -71,7 +72,7 @@ class PasswordConfigurationViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                httpClient.setDevicePassword(_devicePassword.value, ip)
+                httpClient.setDevicePassword(_devicePassword.value, ip, deviceId)
                 _isSaving.value = false
                 _successMessage.value = if (_devicePassword.value.isEmpty()) {
                     "Password protection removed."
@@ -80,6 +81,9 @@ class PasswordConfigurationViewModel @Inject constructor(
                 }
                 _devicePassword.value = ""
                 _confirmPassword.value = ""
+            } catch (e: AuthenticationRequiredException) {
+                _isSaving.value = false
+                // Auth modal will be shown by AuthenticationManager
             } catch (e: Exception) {
                 _isSaving.value = false
                 _errorMessage.value = e.message

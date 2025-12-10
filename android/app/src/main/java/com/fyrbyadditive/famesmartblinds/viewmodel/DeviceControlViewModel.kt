@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.fyrbyadditive.famesmartblinds.data.model.BlindCommand
 import com.fyrbyadditive.famesmartblinds.data.model.BlindDevice
 import com.fyrbyadditive.famesmartblinds.data.model.BlindState
+import com.fyrbyadditive.famesmartblinds.data.remote.AuthenticationRequiredException
 import com.fyrbyadditive.famesmartblinds.data.remote.HttpClient
 import com.fyrbyadditive.famesmartblinds.data.remote.SseClient
 import com.fyrbyadditive.famesmartblinds.data.repository.DeviceRepository
@@ -103,7 +104,7 @@ class DeviceControlViewModel @Inject constructor(
             }
         }
 
-        sseClient.connect(ip)
+        sseClient.connect(ip, deviceId)
     }
 
     private fun stopSSE() {
@@ -137,7 +138,7 @@ class DeviceControlViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                httpClient.sendCommand(command, ip)
+                httpClient.sendCommand(command, ip, deviceId)
 
                 // Update local state optimistically
                 val newState = when (command) {
@@ -151,6 +152,8 @@ class DeviceControlViewModel @Inject constructor(
 
                 // SSE will provide real-time updates, no need to start polling
                 // Polling is only used as fallback if SSE is disconnected
+            } catch (e: AuthenticationRequiredException) {
+                // Auth modal will be shown by AuthenticationManager, don't show error
             } catch (e: Exception) {
                 _errorMessage.value = e.message
             } finally {
@@ -246,8 +249,8 @@ class DeviceControlViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                httpClient.setDeviceName(name, ip)
-                httpClient.sendCommand(BlindCommand.RESTART, ip)
+                httpClient.setDeviceName(name, ip, deviceId)
+                httpClient.sendCommand(BlindCommand.RESTART, ip, deviceId)
 
                 // Wait for device to reboot
                 delay(5000)

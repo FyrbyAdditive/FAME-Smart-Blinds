@@ -1,6 +1,7 @@
 package com.fyrbyadditive.famesmartblinds.data.remote
 
 import android.util.Log
+import com.fyrbyadditive.famesmartblinds.data.local.AuthenticationManager
 import com.google.gson.Gson
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,7 +30,9 @@ enum class SseEndpoint(val path: String) {
  * Connects to the device's /events or /events/logs endpoint.
  */
 @Singleton
-class SseClient @Inject constructor() {
+class SseClient @Inject constructor(
+    private val authManager: AuthenticationManager
+) {
 
     private val _isConnected = MutableStateFlow(false)
     val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
@@ -39,6 +42,7 @@ class SseClient @Inject constructor() {
 
     private var eventSource: EventSource? = null
     private var currentIpAddress: String? = null
+    private var currentDeviceId: String? = null
     private var currentEndpoint: SseEndpoint = SseEndpoint.STATUS
     private var reconnectJob: Job? = null
     private var reconnectAttempts = 0
@@ -64,12 +68,14 @@ class SseClient @Inject constructor() {
     /**
      * Connect to a device's SSE endpoint
      * @param ipAddress The device IP address
+     * @param deviceId The device ID for authentication
      * @param endpoint Which SSE endpoint to connect to (STATUS for device control, LOGS for log streaming)
      */
-    fun connect(ipAddress: String, endpoint: SseEndpoint = SseEndpoint.STATUS) {
+    fun connect(ipAddress: String, deviceId: String? = null, endpoint: SseEndpoint = SseEndpoint.STATUS) {
         disconnect()
 
         currentIpAddress = ipAddress
+        currentDeviceId = deviceId
         currentEndpoint = endpoint
         shouldReconnect = true
         reconnectAttempts = 0
@@ -87,6 +93,7 @@ class SseClient @Inject constructor() {
         eventSource?.cancel()
         eventSource = null
         currentIpAddress = null
+        currentDeviceId = null
         _isConnected.value = false
     }
 
@@ -97,11 +104,19 @@ class SseClient @Inject constructor() {
         val url = "http://$ipAddress${currentEndpoint.path}"
         Log.d(TAG, "Connecting to $url")
 
-        val request = Request.Builder()
+        val requestBuilder = Request.Builder()
             .url(url)
             .header("Accept", "text/event-stream")
             .header("Cache-Control", "no-cache")
-            .build()
+
+        // Add authentication header if we have a valid session
+        currentDeviceId?.let { deviceId ->
+            authManager.getPassword(deviceId)?.let { password ->
+                requestBuilder.header("X-Device-Password", password)
+            }
+        }
+
+        val request = requestBuilder.build()
 
         val factory = EventSources.createFactory(sseClient)
 

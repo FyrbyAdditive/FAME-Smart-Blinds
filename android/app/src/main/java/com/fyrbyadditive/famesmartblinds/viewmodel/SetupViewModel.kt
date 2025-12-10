@@ -2,6 +2,8 @@ package com.fyrbyadditive.famesmartblinds.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.fyrbyadditive.famesmartblinds.data.local.AuthenticationManager
+import com.fyrbyadditive.famesmartblinds.data.local.SessionExpiry
 import com.fyrbyadditive.famesmartblinds.data.model.BlindCommand
 import com.fyrbyadditive.famesmartblinds.data.model.BlindDevice
 import com.fyrbyadditive.famesmartblinds.data.model.DeviceOrientation
@@ -36,7 +38,8 @@ enum class SetupStep {
 class SetupViewModel @Inject constructor(
     private val deviceRepository: DeviceRepository,
     private val bleManager: BleManager,
-    private val deviceDiscovery: DeviceDiscovery
+    private val deviceDiscovery: DeviceDiscovery,
+    private val authManager: AuthenticationManager
 ) : ViewModel() {
 
     private val _setupStep = MutableStateFlow(SetupStep.SELECT_DEVICE)
@@ -320,6 +323,16 @@ class SetupViewModel @Inject constructor(
 
         if (_devicePassword.value.isNotEmpty()) {
             bleManager.configureDevicePassword(_devicePassword.value)
+
+            // Save password to secure storage for future HTTP access
+            val deviceId = _selectedDeviceId.value
+            if (deviceId != null) {
+                authManager.authenticate(
+                    deviceId = deviceId,
+                    password = _devicePassword.value,
+                    expiry = SessionExpiry.UNLIMITED  // Device setup = permanent auth
+                )
+            }
         }
 
         viewModelScope.launch {
@@ -350,8 +363,8 @@ class SetupViewModel @Inject constructor(
         // Clear setup flag
         deviceRepository.markDeviceInSetup(null)
 
-        // Clear old devices
-        deviceRepository.clear()
+        // Clear BLE-only devices (newly setup device will be re-discovered via mDNS)
+        deviceRepository.clearBleOnlyDevices()
 
         // Schedule discovery
         deviceDiscovery.triggerDelayedDiscovery(2)

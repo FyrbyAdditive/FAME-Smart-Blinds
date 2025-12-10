@@ -6,23 +6,30 @@ import android.net.nsd.NsdServiceInfo
 import android.util.Log
 import com.fyrbyadditive.famesmartblinds.data.remote.HttpClient
 import com.fyrbyadditive.famesmartblinds.data.repository.DeviceRepository
-import com.fyrbyadditive.famesmartblinds.util.Constants
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * Handles mDNS/NSD discovery for WiFi-configured FAME Smart Blinds devices.
+ * Bulletproof mDNS/NSD discovery for WiFi-configured FAME Smart Blinds devices.
  *
- * Supports two modes:
- * - Continuous discovery: Runs in background while app is active, automatically detecting devices
- * - Manual refresh: Immediately re-verifies all known devices when user taps refresh
+ * Android's NsdManager is notoriously unreliable compared to iOS's NetServiceBrowser.
+ * This implementation uses multiple strategies to ensure reliable discovery:
  *
- * BLE scanning is handled separately by BleManager (only used for unconfigured devices).
+ * 1. Aggressive NSD cycling - restarts discovery frequently to catch services
+ * 2. Sequential service resolution with proper queue management
+ * 3. Direct HTTP verification of known devices as fallback
+ * 4. Proper listener lifecycle management to avoid stuck states
+ *
+ * The service type is _famesmartblinds._tcp. which the firmware advertises.
  */
 @Singleton
 class DeviceDiscovery @Inject constructor(
@@ -37,15 +44,33 @@ class DeviceDiscovery @Inject constructor(
     val isContinuousDiscoveryActive: StateFlow<Boolean> = _isContinuousDiscoveryActive.asStateFlow()
 
     private var nsdManager: NsdManager? = null
-    private var discoveryListener: NsdManager.DiscoveryListener? = null
-    private var periodicDiscoveryJob: Job? = null
+    private var currentDiscoveryListener: NsdManager.DiscoveryListener? = null
+    private var discoveryJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
+    // Resolution queue management
     private val resolveQueue = mutableListOf<NsdServiceInfo>()
-    private var isResolving = false
+    private val resolveMutex = Mutex()
+    private val isResolving = AtomicBoolean(false)
+    private val discoveryGeneration = AtomicInteger(0)
+
+    // Track discovered IPs to avoid duplicate checks
+    private val discoveredIps = mutableSetOf<String>()
+    private val discoveredIpsMutex = Mutex()
+
+    companion object {
+        private const val TAG = "DeviceDiscovery"
+        private const val SERVICE_TYPE = "_famesmartblinds._tcp."
+
+        // Discovery timing - aggressive cycling for reliability
+        private const val QUICK_RESTART_DELAY_MS = 3000L      // Quick restart after 3s to catch already-online devices
+        private const val DISCOVERY_CYCLE_INTERVAL_MS = 15000L // Time between regular discovery cycles
+        private const val NSD_DISCOVERY_DURATION_MS = 12000L   // How long each NSD session runs before restart
+    }
 
     init {
         nsdManager = context.getSystemService(Context.NSD_SERVICE) as? NsdManager
+        Log.i(TAG, "DeviceDiscovery initialized, NsdManager available: ${nsdManager != null}")
     }
 
     // MARK: - Continuous Discovery
@@ -59,150 +84,88 @@ class DeviceDiscovery @Inject constructor(
             return
         }
 
-        Log.i(TAG, "=== Starting continuous mDNS discovery ===")
-        Log.i(TAG, "NSD Manager available: ${nsdManager != null}")
-        _isContinuousDiscoveryActive.value = true
+        Log.i(TAG, "╔══════════════════════════════════════════════════════════╗")
+        Log.i(TAG, "║  Starting Continuous mDNS Discovery                      ║")
+        Log.i(TAG, "║  Service Type: $SERVICE_TYPE                    ║")
+        Log.i(TAG, "╚══════════════════════════════════════════════════════════╝")
 
+        _isContinuousDiscoveryActive.value = true
+        discoveryGeneration.incrementAndGet()
+
+        // Start NSD immediately - don't wait for the discovery loop
+        // Android NSD often misses services on first query, so we start
+        // right away and the loop will restart it to catch stragglers
         startNsdDiscovery()
-        startPeriodicDiscovery()
+
+        startDiscoveryLoop()
     }
 
     /**
      * Stop continuous discovery. Called when app goes to background.
      */
     fun stopContinuousDiscovery() {
-        Log.d(TAG, "Stopping continuous discovery")
+        Log.i(TAG, "Stopping continuous discovery")
         _isContinuousDiscoveryActive.value = false
         _isSearching.value = false
 
-        stopNsdDiscovery()
-        periodicDiscoveryJob?.cancel()
-        periodicDiscoveryJob = null
-        resolveQueue.clear()
-    }
+        discoveryJob?.cancel()
+        discoveryJob = null
+        stopNsdDiscoverySafely()
 
-    // MARK: - NSD Discovery
-
-    private fun startNsdDiscovery() {
-        stopNsdDiscovery() // Stop any existing discovery
-
-        discoveryListener = object : NsdManager.DiscoveryListener {
-            override fun onDiscoveryStarted(serviceType: String) {
-                Log.d(TAG, "NSD discovery started for $serviceType")
+        scope.launch {
+            resolveMutex.withLock {
+                resolveQueue.clear()
             }
-
-            override fun onServiceFound(serviceInfo: NsdServiceInfo) {
-                Log.d(TAG, "Found service: ${serviceInfo.serviceName}")
-                // Queue for resolution
-                synchronized(resolveQueue) {
-                    resolveQueue.add(serviceInfo)
-                }
-                processResolveQueue()
+            discoveredIpsMutex.withLock {
+                discoveredIps.clear()
             }
-
-            override fun onServiceLost(serviceInfo: NsdServiceInfo) {
-                Log.d(TAG, "Service lost: ${serviceInfo.serviceName}")
-            }
-
-            override fun onDiscoveryStopped(serviceType: String) {
-                Log.d(TAG, "NSD discovery stopped")
-            }
-
-            override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
-                Log.e(TAG, "NSD discovery start failed: $errorCode")
-                _isSearching.value = false
-            }
-
-            override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) {
-                Log.e(TAG, "NSD discovery stop failed: $errorCode")
-            }
-        }
-
-        try {
-            nsdManager?.discoverServices(
-                Constants.Discovery.HTTP_SERVICE_TYPE,
-                NsdManager.PROTOCOL_DNS_SD,
-                discoveryListener
-            )
-            Log.d(TAG, "NSD discovery initiated")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to start NSD discovery: ${e.message}")
         }
     }
 
-    private fun stopNsdDiscovery() {
-        discoveryListener?.let { listener ->
-            try {
-                nsdManager?.stopServiceDiscovery(listener)
-            } catch (e: Exception) {
-                Log.w(TAG, "Error stopping NSD discovery: ${e.message}")
+    // MARK: - Discovery Loop
+
+    private fun startDiscoveryLoop() {
+        discoveryJob?.cancel()
+        discoveryJob = scope.launch {
+            val currentGeneration = discoveryGeneration.get()
+
+            // Quick restart after 3 seconds to catch services missed on first query
+            // Android NSD is notorious for missing already-advertising services
+            delay(QUICK_RESTART_DELAY_MS)
+
+            if (!isActive || !_isContinuousDiscoveryActive.value ||
+                currentGeneration != discoveryGeneration.get()) return@launch
+
+            Log.i(TAG, "┌─────────────────────────────────────────────────┐")
+            Log.i(TAG, "│  Quick Restart (catch already-online devices)   │")
+            Log.i(TAG, "└─────────────────────────────────────────────────┘")
+
+            withContext(Dispatchers.Main) {
+                stopNsdDiscoverySafely()
+                startNsdDiscovery()
             }
-        }
-        discoveryListener = null
-    }
 
-    private fun processResolveQueue() {
-        synchronized(resolveQueue) {
-            if (isResolving || resolveQueue.isEmpty()) return
-            isResolving = true
-        }
+            // Now enter the regular discovery loop
+            while (isActive && _isContinuousDiscoveryActive.value &&
+                   currentGeneration == discoveryGeneration.get()) {
 
-        val serviceInfo: NsdServiceInfo
-        synchronized(resolveQueue) {
-            serviceInfo = resolveQueue.removeAt(0)
-        }
+                // Wait for discovery duration before cycling
+                delay(NSD_DISCOVERY_DURATION_MS)
 
-        val resolveListener = object : NsdManager.ResolveListener {
-            override fun onResolveFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
-                Log.w(TAG, "Resolve failed for ${serviceInfo.serviceName}: $errorCode")
-                synchronized(resolveQueue) {
-                    isResolving = false
+                if (!isActive || !_isContinuousDiscoveryActive.value) break
+
+                Log.i(TAG, "┌─────────────────────────────────────────────────┐")
+                Log.i(TAG, "│  Discovery Cycle                                │")
+                Log.i(TAG, "└─────────────────────────────────────────────────┘")
+
+                // Clear discovered IPs for this cycle
+                discoveredIpsMutex.withLock {
+                    discoveredIps.clear()
                 }
-                processResolveQueue()
-            }
 
-            override fun onServiceResolved(serviceInfo: NsdServiceInfo) {
-                val host = serviceInfo.host
-                if (host != null) {
-                    val ipAddress = host.hostAddress
-                    if (ipAddress != null && ipAddress != "0.0.0.0") {
-                        Log.d(TAG, "Resolved ${serviceInfo.serviceName} to $ipAddress")
-                        scope.launch {
-                            checkDeviceAt(ipAddress)
-                        }
-                    }
-                }
-                synchronized(resolveQueue) {
-                    isResolving = false
-                }
-                processResolveQueue()
-            }
-        }
-
-        try {
-            nsdManager?.resolveService(serviceInfo, resolveListener)
-        } catch (e: Exception) {
-            Log.w(TAG, "Error resolving service: ${e.message}")
-            synchronized(resolveQueue) {
-                isResolving = false
-            }
-            processResolveQueue()
-        }
-    }
-
-    // MARK: - Periodic Discovery
-
-    private fun startPeriodicDiscovery() {
-        periodicDiscoveryJob?.cancel()
-        periodicDiscoveryJob = scope.launch {
-            // Initial delay, then restart discovery periodically
-            delay(2000)
-
-            while (isActive) {
-                Log.d(TAG, "Running periodic discovery cycle")
-
-                // Restart NSD to trigger fresh queries
+                // Restart NSD to catch new services
                 withContext(Dispatchers.Main) {
+                    stopNsdDiscoverySafely()
                     startNsdDiscovery()
                 }
 
@@ -210,18 +173,191 @@ class DeviceDiscovery @Inject constructor(
                 verifyAllKnownDevices()
 
                 // Wait before next cycle
-                delay(Constants.Timeout.DISCOVERY_INTERVAL)
+                delay(DISCOVERY_CYCLE_INTERVAL_MS)
             }
         }
     }
+
+    // MARK: - NSD Discovery
+
+    private fun startNsdDiscovery() {
+        val manager = nsdManager ?: run {
+            Log.e(TAG, "NsdManager is null, cannot start discovery")
+            return
+        }
+
+        val listener = object : NsdManager.DiscoveryListener {
+            override fun onDiscoveryStarted(serviceType: String) {
+                Log.i(TAG, "✓ NSD discovery started for $serviceType")
+            }
+
+            override fun onServiceFound(serviceInfo: NsdServiceInfo) {
+                Log.i(TAG, "★ Found service: ${serviceInfo.serviceName} (type: ${serviceInfo.serviceType})")
+
+                // Queue for resolution
+                scope.launch {
+                    resolveMutex.withLock {
+                        // Avoid duplicates
+                        if (resolveQueue.none { it.serviceName == serviceInfo.serviceName }) {
+                            resolveQueue.add(serviceInfo)
+                            Log.d(TAG, "  Queued for resolution (queue size: ${resolveQueue.size})")
+                        }
+                    }
+                    processResolveQueue()
+                }
+            }
+
+            override fun onServiceLost(serviceInfo: NsdServiceInfo) {
+                Log.d(TAG, "Service lost: ${serviceInfo.serviceName}")
+            }
+
+            override fun onDiscoveryStopped(serviceType: String) {
+                Log.d(TAG, "NSD discovery stopped for $serviceType")
+            }
+
+            override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
+                Log.e(TAG, "✗ NSD discovery start FAILED: errorCode=$errorCode")
+                _isSearching.value = false
+
+                // Retry after a short delay
+                scope.launch {
+                    delay(2000)
+                    if (_isContinuousDiscoveryActive.value) {
+                        withContext(Dispatchers.Main) {
+                            startNsdDiscovery()
+                        }
+                    }
+                }
+            }
+
+            override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) {
+                Log.w(TAG, "NSD discovery stop failed: errorCode=$errorCode")
+            }
+        }
+
+        currentDiscoveryListener = listener
+
+        try {
+            manager.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, listener)
+            _isSearching.value = true
+            Log.d(TAG, "NSD discoverServices() called for $SERVICE_TYPE")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start NSD discovery: ${e.message}", e)
+            currentDiscoveryListener = null
+        }
+    }
+
+    private fun stopNsdDiscoverySafely() {
+        val listener = currentDiscoveryListener ?: return
+        currentDiscoveryListener = null
+
+        try {
+            nsdManager?.stopServiceDiscovery(listener)
+            Log.d(TAG, "NSD discovery stopped")
+        } catch (e: IllegalArgumentException) {
+            // Listener was not registered - this is fine
+            Log.d(TAG, "NSD listener was not registered (already stopped)")
+        } catch (e: Exception) {
+            Log.w(TAG, "Error stopping NSD discovery: ${e.message}")
+        }
+    }
+
+    // MARK: - Service Resolution
+
+    private fun processResolveQueue() {
+        if (!isResolving.compareAndSet(false, true)) {
+            return // Already resolving
+        }
+
+        scope.launch {
+            try {
+                while (_isContinuousDiscoveryActive.value) {
+                    val serviceInfo = resolveMutex.withLock {
+                        resolveQueue.removeFirstOrNull()
+                    } ?: break
+
+                    resolveService(serviceInfo)
+                }
+            } finally {
+                isResolving.set(false)
+            }
+        }
+    }
+
+    private suspend fun resolveService(serviceInfo: NsdServiceInfo) {
+        val manager = nsdManager ?: return
+
+        Log.d(TAG, "Resolving service: ${serviceInfo.serviceName}")
+
+        val result = suspendCancellableCoroutine<String?> { continuation ->
+            val resolveListener = object : NsdManager.ResolveListener {
+                override fun onResolveFailed(service: NsdServiceInfo, errorCode: Int) {
+                    Log.w(TAG, "  ✗ Resolve failed for ${service.serviceName}: errorCode=$errorCode")
+                    if (continuation.isActive) {
+                        continuation.resume(null) {}
+                    }
+                }
+
+                override fun onServiceResolved(service: NsdServiceInfo) {
+                    val host = service.host
+                    val ipAddress = host?.hostAddress
+
+                    if (ipAddress != null && ipAddress != "0.0.0.0") {
+                        Log.i(TAG, "  ✓ Resolved ${service.serviceName} → $ipAddress")
+                        if (continuation.isActive) {
+                            continuation.resume(ipAddress) {}
+                        }
+                    } else {
+                        Log.w(TAG, "  ✗ Resolved ${service.serviceName} but got invalid IP: $ipAddress")
+                        if (continuation.isActive) {
+                            continuation.resume(null) {}
+                        }
+                    }
+                }
+            }
+
+            try {
+                manager.resolveService(serviceInfo, resolveListener)
+            } catch (e: Exception) {
+                Log.w(TAG, "  ✗ Exception resolving ${serviceInfo.serviceName}: ${e.message}")
+                if (continuation.isActive) {
+                    continuation.resume(null) {}
+                }
+            }
+        }
+
+        // Check device at resolved IP
+        if (result != null) {
+            val shouldCheck = discoveredIpsMutex.withLock {
+                if (result in discoveredIps) {
+                    false
+                } else {
+                    discoveredIps.add(result)
+                    true
+                }
+            }
+
+            if (shouldCheck) {
+                checkDeviceAt(result)
+            }
+        }
+
+        // Small delay between resolutions to avoid overwhelming NsdManager
+        delay(100)
+    }
+
+    // MARK: - HTTP Verification
 
     private suspend fun verifyAllKnownDevices() {
         val deviceInfos = deviceRepository.getConfiguredDevices()
             .mapNotNull { device -> device.ipAddress?.let { ip -> ip to device.deviceId } }
 
-        if (deviceInfos.isEmpty()) return
+        if (deviceInfos.isEmpty()) {
+            Log.d(TAG, "No known devices to verify")
+            return
+        }
 
-        Log.d(TAG, "Verifying ${deviceInfos.size} known devices")
+        Log.i(TAG, "Verifying ${deviceInfos.size} known device(s) via HTTP")
 
         coroutineScope {
             deviceInfos.forEach { (ip, deviceId) ->
@@ -236,7 +372,10 @@ class DeviceDiscovery @Inject constructor(
         try {
             val info = httpClient.getInfo(ipAddress)
 
-            if (info.device != "FAMESmartBlinds") return
+            if (info.device != "FAMESmartBlinds") {
+                Log.d(TAG, "Device at $ipAddress is not a FAME device: ${info.device}")
+                return
+            }
 
             deviceRepository.updateFromHttp(
                 name = info.hostname,
@@ -244,32 +383,40 @@ class DeviceDiscovery @Inject constructor(
                 deviceId = info.deviceId,
                 macAddress = info.mac
             )
+            Log.d(TAG, "  ✓ Verified device at $ipAddress: ${info.hostname}")
         } catch (e: Exception) {
-            Log.d(TAG, "Device at $ipAddress unreachable: ${e.message}")
+            Log.d(TAG, "  ✗ Device at $ipAddress unreachable: ${e.message}")
         }
     }
 
     // MARK: - Manual Discovery
 
     /**
-     * Trigger a manual refresh - immediately re-verifies all known devices.
+     * Trigger a manual refresh - re-verifies known devices and restarts mDNS.
      */
     suspend fun triggerManualRefresh() {
-        Log.d(TAG, "Manual refresh triggered")
+        Log.i(TAG, "Manual refresh triggered")
         _isSearching.value = true
 
-        // Re-verify all known WiFi devices
-        verifyAllKnownDevices()
-
-        // Restart NSD to catch any new announcements
-        if (_isContinuousDiscoveryActive.value) {
-            withContext(Dispatchers.Main) {
-                stopNsdDiscovery()
-                startNsdDiscovery()
+        try {
+            // Clear discovered IPs to allow re-checking
+            discoveredIpsMutex.withLock {
+                discoveredIps.clear()
             }
-        }
 
-        _isSearching.value = false
+            // Re-verify all known WiFi devices
+            verifyAllKnownDevices()
+
+            // Restart NSD discovery
+            if (_isContinuousDiscoveryActive.value) {
+                withContext(Dispatchers.Main) {
+                    stopNsdDiscoverySafely()
+                    startNsdDiscovery()
+                }
+            }
+        } finally {
+            _isSearching.value = false
+        }
     }
 
     /**
@@ -280,11 +427,11 @@ class DeviceDiscovery @Inject constructor(
 
         try {
             val info = httpClient.getInfo(ipAddress)
-            Log.i(TAG, "Got info response: device=${info.device}, hostname=${info.hostname}")
+            Log.i(TAG, "    Got info: device=${info.device}, hostname=${info.hostname}, deviceId=${info.deviceId}")
 
             // Verify this is a FAME Smart Blinds device
             if (info.device != "FAMESmartBlinds") {
-                Log.w(TAG, "Device at $ipAddress is not a FAME Smart Blinds device: ${info.device}")
+                Log.w(TAG, "<<< Device at $ipAddress is NOT a FAME device: ${info.device}")
                 return
             }
 
@@ -295,9 +442,9 @@ class DeviceDiscovery @Inject constructor(
                 macAddress = info.mac
             )
 
-            Log.i(TAG, "<<< Found device: ${info.hostname} at $ipAddress (deviceId: ${info.deviceId})")
+            Log.i(TAG, "<<< ✓ Found FAME device: ${info.hostname} at $ipAddress (deviceId: ${info.deviceId})")
         } catch (e: Exception) {
-            Log.e(TAG, "!!! Failed to check device at $ipAddress: ${e.message}", e)
+            Log.e(TAG, "<<< ✗ Failed to check device at $ipAddress: ${e.message}")
         }
     }
 
@@ -306,17 +453,20 @@ class DeviceDiscovery @Inject constructor(
      * Used after device setup completes to find the newly configured device.
      */
     fun triggerDelayedDiscovery(delaySeconds: Int) {
-        Log.d(TAG, "Scheduling mDNS discovery restart in $delaySeconds seconds")
+        Log.d(TAG, "Scheduling discovery restart in $delaySeconds seconds")
         scope.launch {
             delay(delaySeconds * 1000L)
-            Log.d(TAG, "Running post-setup mDNS discovery")
+            Log.d(TAG, "Running post-setup discovery")
+
+            // Clear IPs and restart
+            discoveredIpsMutex.withLock {
+                discoveredIps.clear()
+            }
+
             withContext(Dispatchers.Main) {
+                stopNsdDiscoverySafely()
                 startNsdDiscovery()
             }
         }
-    }
-
-    companion object {
-        private const val TAG = "DeviceDiscovery"
     }
 }

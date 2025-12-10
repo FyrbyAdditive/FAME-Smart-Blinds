@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.fyrbyadditive.famesmartblinds.data.model.BlindCommand
 import com.fyrbyadditive.famesmartblinds.data.model.BlindDevice
 import com.fyrbyadditive.famesmartblinds.data.model.DeviceOrientation
+import com.fyrbyadditive.famesmartblinds.data.remote.AuthenticationRequiredException
 import com.fyrbyadditive.famesmartblinds.data.remote.HttpClient
 import com.fyrbyadditive.famesmartblinds.data.repository.DeviceRepository
 import com.fyrbyadditive.famesmartblinds.util.Constants
@@ -125,9 +126,13 @@ class SettingsViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                httpClient.setOrientation(orientation, ip)
+                httpClient.setOrientation(orientation, ip, deviceId)
                 _isSavingOrientation.value = false
                 _successMessage.value = "Orientation updated to ${orientation.displayName}"
+            } catch (e: AuthenticationRequiredException) {
+                _isSavingOrientation.value = false
+                // Auth modal will be shown by AuthenticationManager
+                loadDeviceInfo()
             } catch (e: Exception) {
                 _isSavingOrientation.value = false
                 _errorMessage.value = e.message
@@ -154,8 +159,11 @@ class SettingsViewModel @Inject constructor(
         _isSavingSpeed.value = true
 
         try {
-            httpClient.setSpeed(speed, ip)
+            httpClient.setSpeed(speed, ip, deviceId)
             _isSavingSpeed.value = false
+        } catch (e: AuthenticationRequiredException) {
+            _isSavingSpeed.value = false
+            // Auth modal will be shown by AuthenticationManager
         } catch (e: Exception) {
             _isSavingSpeed.value = false
             _errorMessage.value = e.message
@@ -170,7 +178,7 @@ class SettingsViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                httpClient.uploadFirmware(firmwareData, ip) { progress ->
+                httpClient.uploadFirmware(firmwareData, ip, deviceId) { progress ->
                     _uploadProgress.value = progress
                 }
                 _isUploading.value = false
@@ -179,6 +187,9 @@ class SettingsViewModel @Inject constructor(
                 // Reload info after a delay
                 delay(5000)
                 loadDeviceInfo()
+            } catch (e: AuthenticationRequiredException) {
+                _isUploading.value = false
+                // Auth modal will be shown by AuthenticationManager
             } catch (e: Exception) {
                 _isUploading.value = false
                 _errorMessage.value = e.message
@@ -191,8 +202,10 @@ class SettingsViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                httpClient.sendCommand(BlindCommand.RESTART, ip)
+                httpClient.sendCommand(BlindCommand.RESTART, ip, deviceId)
                 _successMessage.value = "Device is restarting..."
+            } catch (e: AuthenticationRequiredException) {
+                // Auth modal will be shown by AuthenticationManager
             } catch (e: Exception) {
                 _errorMessage.value = e.message
             }
@@ -215,12 +228,15 @@ class SettingsViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                httpClient.factoryReset(ip)
+                httpClient.factoryReset(ip, deviceId)
                 _isResetting.value = false
                 _successMessage.value = "Factory reset complete. The device will restart and need to be set up again."
 
                 // Remove device from registry
                 deviceRepository.remove(deviceId)
+            } catch (e: AuthenticationRequiredException) {
+                _isResetting.value = false
+                // Auth modal will be shown by AuthenticationManager
             } catch (e: Exception) {
                 _isResetting.value = false
                 _errorMessage.value = e.message

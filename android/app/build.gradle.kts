@@ -14,8 +14,8 @@ android {
         applicationId = "com.fyrbyadditive.famesmartblinds"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 3
+        versionName = "1.0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -72,6 +72,9 @@ dependencies {
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
+
+    // Security - for encrypted credentials storage
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
     // Testing
     testImplementation(libs.junit)

@@ -23,6 +23,12 @@ class DeviceListViewModel @Inject constructor(
     private val deviceDiscovery: DeviceDiscovery
 ) : ViewModel() {
 
+    init {
+        // Start discovery immediately when ViewModel is created
+        Log.i("DeviceListViewModel", "init - starting discovery")
+        deviceDiscovery.startContinuousDiscovery()
+    }
+
     /**
      * Only WiFi-configured devices (have IP address)
      */
@@ -43,6 +49,7 @@ class DeviceListViewModel @Inject constructor(
     val manualIp: StateFlow<String> = _manualIp.asStateFlow()
 
     fun startDiscovery() {
+        Log.i("DeviceListViewModel", "startDiscovery() called")
         deviceDiscovery.startContinuousDiscovery()
     }
 

@@ -12,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -32,6 +33,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.fyrbyadditive.famesmartblinds.R
 import com.fyrbyadditive.famesmartblinds.ui.screens.*
+import com.fyrbyadditive.famesmartblinds.viewmodel.AuthenticationNavViewModel
 import com.fyrbyadditive.famesmartblinds.viewmodel.CalibrationViewModel
 import com.fyrbyadditive.famesmartblinds.viewmodel.DeviceConfigurationViewModel
 import com.fyrbyadditive.famesmartblinds.viewmodel.DeviceControlViewModel
@@ -92,7 +94,8 @@ sealed class BottomNavItem(
 @Composable
 fun FAMESmartBlindsNavHost(
     modifier: Modifier = Modifier,
-    navController: NavHostController = rememberNavController()
+    navController: NavHostController = rememberNavController(),
+    authenticationViewModel: AuthenticationNavViewModel = hiltViewModel()
 ) {
     val deviceListViewModel: DeviceListViewModel = hiltViewModel()
 
@@ -110,6 +113,34 @@ fun FAMESmartBlindsNavHost(
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
+    }
+
+    // Authentication dialog state
+    val deviceNeedingAuth by authenticationViewModel.deviceNeedingAuth.collectAsState()
+    val authIsLoading by authenticationViewModel.isLoading.collectAsState()
+    val authErrorMessage by authenticationViewModel.errorMessage.collectAsState()
+    val deviceNeedingAuthInfo = deviceNeedingAuth?.let { deviceId ->
+        authenticationViewModel.getDeviceInfo(deviceId)
+    }
+
+    // Show authentication dialog when needed
+    if (deviceNeedingAuth != null && deviceNeedingAuthInfo != null) {
+        DeviceAuthenticationDialog(
+            deviceName = deviceNeedingAuthInfo.first,
+            isLoading = authIsLoading,
+            errorMessage = authErrorMessage,
+            onAuthenticate = { password, expiry ->
+                authenticationViewModel.authenticate(
+                    deviceId = deviceNeedingAuth!!,
+                    ipAddress = deviceNeedingAuthInfo.second,
+                    password = password,
+                    expiry = expiry
+                )
+            },
+            onDismiss = {
+                authenticationViewModel.dismissAuthDialog()
+            }
+        )
     }
 
     val bottomNavItems = listOf(BottomNavItem.Devices, BottomNavItem.Setup)

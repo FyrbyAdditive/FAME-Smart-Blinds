@@ -1,6 +1,7 @@
 package com.fyrbyadditive.famesmartblinds.data.remote
 
 import android.util.Log
+import com.fyrbyadditive.famesmartblinds.data.local.AuthenticationManager
 import com.fyrbyadditive.famesmartblinds.data.model.BlindCommand
 import com.fyrbyadditive.famesmartblinds.data.model.DeviceOrientation
 import com.fyrbyadditive.famesmartblinds.util.CRC32
@@ -22,7 +23,9 @@ import javax.inject.Singleton
  * HTTP client for communicating with FAME Smart Blinds devices
  */
 @Singleton
-class HttpClient @Inject constructor() {
+class HttpClient @Inject constructor(
+    private val authManager: AuthenticationManager
+) {
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(Constants.Timeout.HTTP_REQUEST, TimeUnit.MILLISECONDS)
@@ -32,12 +35,35 @@ class HttpClient @Inject constructor() {
 
     private val gson = Gson()
 
+    // MARK: - Authentication Helpers
+
+    /**
+     * Add authentication header to request if we have a valid session
+     */
+    private fun Request.Builder.addAuthHeader(deviceId: String): Request.Builder {
+        val password = authManager.getPassword(deviceId)
+        if (password != null) {
+            addHeader("X-Device-Password", password)
+        }
+        return this
+    }
+
+    /**
+     * Check response for 401 and handle auth failure
+     */
+    private fun checkAuthResponse(response: okhttp3.Response, deviceId: String) {
+        if (response.code == 401) {
+            authManager.handleAuthenticationRequired(deviceId)
+            throw AuthenticationRequiredException(deviceId)
+        }
+    }
+
     // MARK: - Device Control
 
     /**
-     * Send a command to the device
+     * Send a command to the device (PROTECTED)
      */
-    suspend fun sendCommand(command: BlindCommand, ipAddress: String) = withContext(Dispatchers.IO) {
+    suspend fun sendCommand(command: BlindCommand, ipAddress: String, deviceId: String) = withContext(Dispatchers.IO) {
         val endpoint = when (command) {
             BlindCommand.OPEN -> Constants.HTTP.OPEN_ENDPOINT
             BlindCommand.CLOSE -> Constants.HTTP.CLOSE_ENDPOINT
@@ -51,9 +77,11 @@ class HttpClient @Inject constructor() {
         val request = Request.Builder()
             .url(url)
             .post("".toRequestBody(null))
+            .addAuthHeader(deviceId)
             .build()
 
         val response = client.newCall(request).execute()
+        checkAuthResponse(response, deviceId)
         if (!response.isSuccessful) {
             throw HttpException(response.code, response.body?.string() ?: "Unknown error")
         }
@@ -63,9 +91,9 @@ class HttpClient @Inject constructor() {
     // MARK: - Device Configuration
 
     /**
-     * Set device name
+     * Set device name (PROTECTED)
      */
-    suspend fun setDeviceName(name: String, ipAddress: String) = withContext(Dispatchers.IO) {
+    suspend fun setDeviceName(name: String, ipAddress: String, deviceId: String) = withContext(Dispatchers.IO) {
         val encodedName = URLEncoder.encode(name, "UTF-8")
         val url = "http://$ipAddress/name?name=$encodedName"
         Log.d(TAG, "POST $url")
@@ -73,9 +101,11 @@ class HttpClient @Inject constructor() {
         val request = Request.Builder()
             .url(url)
             .post("".toRequestBody(null))
+            .addAuthHeader(deviceId)
             .build()
 
         val response = client.newCall(request).execute()
+        checkAuthResponse(response, deviceId)
         if (!response.isSuccessful) {
             throw HttpException(response.code, response.body?.string() ?: "Unknown error")
         }
@@ -83,9 +113,9 @@ class HttpClient @Inject constructor() {
     }
 
     /**
-     * Set device password
+     * Set device password (PROTECTED)
      */
-    suspend fun setDevicePassword(password: String, ipAddress: String) = withContext(Dispatchers.IO) {
+    suspend fun setDevicePassword(password: String, ipAddress: String, deviceId: String) = withContext(Dispatchers.IO) {
         val encodedPassword = URLEncoder.encode(password, "UTF-8")
         val url = "http://$ipAddress/password?password=$encodedPassword"
         Log.d(TAG, "POST /password")
@@ -93,9 +123,11 @@ class HttpClient @Inject constructor() {
         val request = Request.Builder()
             .url(url)
             .post("".toRequestBody(null))
+            .addAuthHeader(deviceId)
             .build()
 
         val response = client.newCall(request).execute()
+        checkAuthResponse(response, deviceId)
         if (!response.isSuccessful) {
             throw HttpException(response.code, response.body?.string() ?: "Unknown error")
         }
@@ -103,14 +135,15 @@ class HttpClient @Inject constructor() {
     }
 
     /**
-     * Set MQTT configuration
+     * Set MQTT configuration (PROTECTED)
      */
     suspend fun setMqttConfig(
         broker: String,
         port: Int = 1883,
         user: String = "",
         password: String = "",
-        ipAddress: String
+        ipAddress: String,
+        deviceId: String
     ) = withContext(Dispatchers.IO) {
         val encodedBroker = URLEncoder.encode(broker, "UTF-8")
         var urlString = "http://$ipAddress/mqtt?broker=$encodedBroker&port=$port"
@@ -126,9 +159,11 @@ class HttpClient @Inject constructor() {
         val request = Request.Builder()
             .url(urlString)
             .post("".toRequestBody(null))
+            .addAuthHeader(deviceId)
             .build()
 
         val response = client.newCall(request).execute()
+        checkAuthResponse(response, deviceId)
         if (!response.isSuccessful) {
             throw HttpException(response.code, response.body?.string() ?: "Unknown error")
         }
@@ -136,9 +171,9 @@ class HttpClient @Inject constructor() {
     }
 
     /**
-     * Set WiFi credentials
+     * Set WiFi credentials (PROTECTED)
      */
-    suspend fun setWifiCredentials(ssid: String, password: String, ipAddress: String) = withContext(Dispatchers.IO) {
+    suspend fun setWifiCredentials(ssid: String, password: String, ipAddress: String, deviceId: String) = withContext(Dispatchers.IO) {
         val encodedSsid = URLEncoder.encode(ssid, "UTF-8")
         val encodedPassword = URLEncoder.encode(password, "UTF-8")
         val url = "http://$ipAddress/wifi?ssid=$encodedSsid&password=$encodedPassword"
@@ -147,9 +182,11 @@ class HttpClient @Inject constructor() {
         val request = Request.Builder()
             .url(url)
             .post("".toRequestBody(null))
+            .addAuthHeader(deviceId)
             .build()
 
         val response = client.newCall(request).execute()
+        checkAuthResponse(response, deviceId)
         if (!response.isSuccessful) {
             throw HttpException(response.code, response.body?.string() ?: "Unknown error")
         }
@@ -157,18 +194,20 @@ class HttpClient @Inject constructor() {
     }
 
     /**
-     * Set device orientation
+     * Set device orientation (PROTECTED)
      */
-    suspend fun setOrientation(orientation: DeviceOrientation, ipAddress: String) = withContext(Dispatchers.IO) {
+    suspend fun setOrientation(orientation: DeviceOrientation, ipAddress: String, deviceId: String) = withContext(Dispatchers.IO) {
         val url = "http://$ipAddress/orientation?orientation=${orientation.value}"
         Log.d(TAG, "POST /orientation: ${orientation.value}")
 
         val request = Request.Builder()
             .url(url)
             .post("".toRequestBody(null))
+            .addAuthHeader(deviceId)
             .build()
 
         val response = client.newCall(request).execute()
+        checkAuthResponse(response, deviceId)
         if (!response.isSuccessful) {
             throw HttpException(response.code, response.body?.string() ?: "Unknown error")
         }
@@ -176,18 +215,20 @@ class HttpClient @Inject constructor() {
     }
 
     /**
-     * Set servo speed
+     * Set servo speed (PROTECTED)
      */
-    suspend fun setSpeed(speed: Int, ipAddress: String) = withContext(Dispatchers.IO) {
+    suspend fun setSpeed(speed: Int, ipAddress: String, deviceId: String) = withContext(Dispatchers.IO) {
         val url = "http://$ipAddress/speed"
         Log.d(TAG, "POST /speed: $speed")
 
         val request = Request.Builder()
             .url(url)
             .post("value=$speed".toRequestBody("application/x-www-form-urlencoded".toMediaType()))
+            .addAuthHeader(deviceId)
             .build()
 
         val response = client.newCall(request).execute()
+        checkAuthResponse(response, deviceId)
         if (!response.isSuccessful) {
             throw HttpException(response.code, response.body?.string() ?: "Unknown error")
         }
@@ -257,18 +298,20 @@ class HttpClient @Inject constructor() {
     // MARK: - Calibration
 
     /**
-     * Start calibration
+     * Start calibration (PROTECTED)
      */
-    suspend fun startCalibration(ipAddress: String) = withContext(Dispatchers.IO) {
+    suspend fun startCalibration(ipAddress: String, deviceId: String) = withContext(Dispatchers.IO) {
         val url = "http://$ipAddress/calibrate/start"
         Log.d(TAG, "POST /calibrate/start")
 
         val request = Request.Builder()
             .url(url)
             .post("".toRequestBody(null))
+            .addAuthHeader(deviceId)
             .build()
 
         val response = client.newCall(request).execute()
+        checkAuthResponse(response, deviceId)
         if (!response.isSuccessful) {
             throw HttpException(response.code, response.body?.string() ?: "Unknown error")
         }
@@ -276,18 +319,20 @@ class HttpClient @Inject constructor() {
     }
 
     /**
-     * Set bottom position during calibration
+     * Set bottom position during calibration (PROTECTED)
      */
-    suspend fun setBottomPosition(ipAddress: String) = withContext(Dispatchers.IO) {
+    suspend fun setBottomPosition(ipAddress: String, deviceId: String) = withContext(Dispatchers.IO) {
         val url = "http://$ipAddress/calibrate/setbottom"
         Log.d(TAG, "POST /calibrate/setbottom")
 
         val request = Request.Builder()
             .url(url)
             .post("".toRequestBody(null))
+            .addAuthHeader(deviceId)
             .build()
 
         val response = client.newCall(request).execute()
+        checkAuthResponse(response, deviceId)
         if (!response.isSuccessful) {
             throw HttpException(response.code, response.body?.string() ?: "Unknown error")
         }
@@ -295,18 +340,20 @@ class HttpClient @Inject constructor() {
     }
 
     /**
-     * Cancel calibration
+     * Cancel calibration (PROTECTED)
      */
-    suspend fun cancelCalibration(ipAddress: String) = withContext(Dispatchers.IO) {
+    suspend fun cancelCalibration(ipAddress: String, deviceId: String) = withContext(Dispatchers.IO) {
         val url = "http://$ipAddress/calibrate/cancel"
         Log.d(TAG, "POST /calibrate/cancel")
 
         val request = Request.Builder()
             .url(url)
             .post("".toRequestBody(null))
+            .addAuthHeader(deviceId)
             .build()
 
         val response = client.newCall(request).execute()
+        checkAuthResponse(response, deviceId)
         if (!response.isSuccessful) {
             throw HttpException(response.code, response.body?.string() ?: "Unknown error")
         }
@@ -314,18 +361,20 @@ class HttpClient @Inject constructor() {
     }
 
     /**
-     * Get calibration status
+     * Get calibration status (PROTECTED)
      */
-    suspend fun getCalibrationStatus(ipAddress: String): CalibrationStatusResponse = withContext(Dispatchers.IO) {
+    suspend fun getCalibrationStatus(ipAddress: String, deviceId: String): CalibrationStatusResponse = withContext(Dispatchers.IO) {
         val url = "http://$ipAddress/calibrate/status"
         Log.d(TAG, "GET /calibrate/status")
 
         val request = Request.Builder()
             .url(url)
             .get()
+            .addAuthHeader(deviceId)
             .build()
 
         val response = client.newCall(request).execute()
+        checkAuthResponse(response, deviceId)
         if (!response.isSuccessful) {
             throw HttpException(response.code, response.body?.string() ?: "Unknown error")
         }
@@ -337,18 +386,20 @@ class HttpClient @Inject constructor() {
     }
 
     /**
-     * Force open (bypasses calibration limits)
+     * Force open (bypasses calibration limits) (PROTECTED)
      */
-    suspend fun openForce(ipAddress: String) = withContext(Dispatchers.IO) {
+    suspend fun openForce(ipAddress: String, deviceId: String) = withContext(Dispatchers.IO) {
         val url = "http://$ipAddress/open/force"
         Log.d(TAG, "POST /open/force")
 
         val request = Request.Builder()
             .url(url)
             .post("".toRequestBody(null))
+            .addAuthHeader(deviceId)
             .build()
 
         val response = client.newCall(request).execute()
+        checkAuthResponse(response, deviceId)
         if (!response.isSuccessful) {
             throw HttpException(response.code, response.body?.string() ?: "Unknown error")
         }
@@ -356,18 +407,20 @@ class HttpClient @Inject constructor() {
     }
 
     /**
-     * Force close (bypasses calibration limits)
+     * Force close (bypasses calibration limits) (PROTECTED)
      */
-    suspend fun closeForce(ipAddress: String) = withContext(Dispatchers.IO) {
+    suspend fun closeForce(ipAddress: String, deviceId: String) = withContext(Dispatchers.IO) {
         val url = "http://$ipAddress/close/force"
         Log.d(TAG, "POST /close/force")
 
         val request = Request.Builder()
             .url(url)
             .post("".toRequestBody(null))
+            .addAuthHeader(deviceId)
             .build()
 
         val response = client.newCall(request).execute()
+        checkAuthResponse(response, deviceId)
         if (!response.isSuccessful) {
             throw HttpException(response.code, response.body?.string() ?: "Unknown error")
         }
@@ -377,11 +430,12 @@ class HttpClient @Inject constructor() {
     // MARK: - Firmware Update (Chunked Protocol)
 
     /**
-     * Upload firmware using chunked protocol for memory-constrained devices
+     * Upload firmware using chunked protocol for memory-constrained devices (PROTECTED)
      */
     suspend fun uploadFirmware(
         firmwareData: ByteArray,
         ipAddress: String,
+        deviceId: String,
         onProgress: (Float) -> Unit
     ) = withContext(Dispatchers.IO) {
         val chunkSize = 8192 // 8KB chunks
@@ -395,6 +449,7 @@ class HttpClient @Inject constructor() {
         val beginRequest = Request.Builder()
             .url(beginUrl)
             .post("".toRequestBody(null))
+            .addAuthHeader(deviceId)
             .build()
 
         val beginClient = OkHttpClient.Builder()
@@ -403,6 +458,7 @@ class HttpClient @Inject constructor() {
             .build()
 
         val beginResponse = beginClient.newCall(beginRequest).execute()
+        checkAuthResponse(beginResponse, deviceId)
         if (!beginResponse.isSuccessful) {
             throw HttpException(beginResponse.code, beginResponse.body?.string() ?: "Begin failed")
         }
@@ -430,12 +486,14 @@ class HttpClient @Inject constructor() {
                 .url(chunkUrl)
                 .post(chunkData.toRequestBody("application/octet-stream".toMediaType()))
                 .addHeader("Content-Length", chunkData.size.toString())
+                .addAuthHeader(deviceId)
                 .build()
 
             val chunkResponse = chunkClient.newCall(chunkRequest).execute()
+            checkAuthResponse(chunkResponse, deviceId)
             if (!chunkResponse.isSuccessful) {
                 // Abort OTA on failure
-                try { abortOTA(ipAddress) } catch (_: Exception) {}
+                try { abortOTA(ipAddress, deviceId) } catch (_: Exception) {}
                 throw HttpException(chunkResponse.code, "Chunk $chunkIndex failed: ${chunkResponse.body?.string()}")
             }
 
@@ -458,9 +516,11 @@ class HttpClient @Inject constructor() {
         val endRequest = Request.Builder()
             .url(endUrl)
             .post("".toRequestBody(null))
+            .addAuthHeader(deviceId)
             .build()
 
         val endResponse = chunkClient.newCall(endRequest).execute()
+        checkAuthResponse(endResponse, deviceId)
         if (!endResponse.isSuccessful) {
             throw HttpException(endResponse.code, "Finalize failed: ${endResponse.body?.string()}")
         }
@@ -469,14 +529,15 @@ class HttpClient @Inject constructor() {
     }
 
     /**
-     * Abort an in-progress OTA update
+     * Abort an in-progress OTA update (PROTECTED)
      */
-    suspend fun abortOTA(ipAddress: String) = withContext(Dispatchers.IO) {
+    suspend fun abortOTA(ipAddress: String, deviceId: String) = withContext(Dispatchers.IO) {
         try {
             val url = "http://$ipAddress/ota/abort"
             val request = Request.Builder()
                 .url(url)
                 .post("".toRequestBody(null))
+                .addAuthHeader(deviceId)
                 .build()
 
             client.newCall(request).execute()
@@ -489,18 +550,20 @@ class HttpClient @Inject constructor() {
     // MARK: - Device Logs
 
     /**
-     * Get device logs
+     * Get device logs (PROTECTED)
      */
-    suspend fun getLogs(ipAddress: String): List<String> = withContext(Dispatchers.IO) {
+    suspend fun getLogs(ipAddress: String, deviceId: String): List<String> = withContext(Dispatchers.IO) {
         val url = "http://$ipAddress/logs"
         Log.d(TAG, "GET /logs")
 
         val request = Request.Builder()
             .url(url)
             .get()
+            .addAuthHeader(deviceId)
             .build()
 
         val response = client.newCall(request).execute()
+        checkAuthResponse(response, deviceId)
         if (!response.isSuccessful) {
             throw HttpException(response.code, response.body?.string() ?: "Unknown error")
         }
@@ -512,18 +575,20 @@ class HttpClient @Inject constructor() {
     }
 
     /**
-     * Clear device logs
+     * Clear device logs (PROTECTED)
      */
-    suspend fun clearLogs(ipAddress: String) = withContext(Dispatchers.IO) {
+    suspend fun clearLogs(ipAddress: String, deviceId: String) = withContext(Dispatchers.IO) {
         val url = "http://$ipAddress/logs"
         Log.d(TAG, "DELETE /logs")
 
         val request = Request.Builder()
             .url(url)
             .delete()
+            .addAuthHeader(deviceId)
             .build()
 
         val response = client.newCall(request).execute()
+        checkAuthResponse(response, deviceId)
         if (!response.isSuccessful) {
             throw HttpException(response.code, response.body?.string() ?: "Unknown error")
         }
@@ -533,15 +598,16 @@ class HttpClient @Inject constructor() {
     // MARK: - Factory Reset
 
     /**
-     * Factory reset device
+     * Factory reset device (PROTECTED)
      */
-    suspend fun factoryReset(ipAddress: String) = withContext(Dispatchers.IO) {
+    suspend fun factoryReset(ipAddress: String, deviceId: String) = withContext(Dispatchers.IO) {
         val url = "http://$ipAddress/factory-reset"
         Log.d(TAG, "POST /factory-reset")
 
         val request = Request.Builder()
             .url(url)
             .post("".toRequestBody(null))
+            .addAuthHeader(deviceId)
             .build()
 
         val longTimeoutClient = OkHttpClient.Builder()
@@ -550,10 +616,37 @@ class HttpClient @Inject constructor() {
             .build()
 
         val response = longTimeoutClient.newCall(request).execute()
+        checkAuthResponse(response, deviceId)
         if (!response.isSuccessful) {
             throw HttpException(response.code, response.body?.string() ?: "Unknown error")
         }
         Log.d(TAG, "Factory reset successful, device restarting...")
+    }
+
+    // MARK: - Authentication
+
+    /**
+     * Test authentication by calling a protected endpoint
+     */
+    suspend fun testAuthentication(ipAddress: String, deviceId: String, password: String): Boolean = withContext(Dispatchers.IO) {
+        val url = "http://$ipAddress/logs"
+        Log.d(TAG, "Testing authentication for device: $deviceId")
+
+        val request = Request.Builder()
+            .url(url)
+            .get()
+            .addHeader("X-Device-Password", password)
+            .build()
+
+        try {
+            val response = client.newCall(request).execute()
+            val success = response.isSuccessful
+            Log.d(TAG, "Authentication test result: $success")
+            success
+        } catch (e: Exception) {
+            Log.e(TAG, "Authentication test failed: ${e.message}")
+            false
+        }
     }
 
     companion object {
@@ -565,3 +658,8 @@ class HttpClient @Inject constructor() {
  * HTTP exception with status code and message
  */
 class HttpException(val code: Int, message: String) : IOException("HTTP $code: $message")
+
+/**
+ * Exception thrown when authentication is required (401 response)
+ */
+class AuthenticationRequiredException(val deviceId: String) : IOException("Authentication required for device: $deviceId")

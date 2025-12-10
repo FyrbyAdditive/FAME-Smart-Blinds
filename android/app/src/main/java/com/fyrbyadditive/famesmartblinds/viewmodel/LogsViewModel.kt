@@ -18,13 +18,11 @@ import javax.inject.Inject
 class LogsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val deviceRepository: DeviceRepository,
-    private val httpClient: HttpClient
+    private val httpClient: HttpClient,
+    private val sseClient: SseClient
 ) : ViewModel() {
 
     private val deviceId: String = checkNotNull(savedStateHandle["deviceId"])
-
-    // Own SSE client for log streaming - connects to /events/logs endpoint
-    private val sseClient = SseClient()
 
     private val _logs = MutableStateFlow<List<String>>(emptyList())
     val logs: StateFlow<List<String>> = _logs.asStateFlow()
@@ -59,7 +57,7 @@ class LogsViewModel @Inject constructor(
                 _logs.value = _logs.value + logEntry
             }
         }
-        sseClient.connect(ip, SseEndpoint.LOGS)
+        sseClient.connect(ip, deviceId, SseEndpoint.LOGS)
     }
 
     fun loadLogs() {
@@ -73,7 +71,7 @@ class LogsViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                val fetchedLogs = httpClient.getLogs(ip)
+                val fetchedLogs = httpClient.getLogs(ip, deviceId)
                 _logs.value = fetchedLogs
             } catch (e: Exception) {
                 _error.value = e.message ?: "Failed to load logs"
@@ -88,7 +86,7 @@ class LogsViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                httpClient.clearLogs(ip)
+                httpClient.clearLogs(ip, deviceId)
                 _logs.value = emptyList()
             } catch (e: Exception) {
                 _error.value = e.message ?: "Failed to clear logs"
