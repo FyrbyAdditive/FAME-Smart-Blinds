@@ -168,7 +168,7 @@ struct DeviceConfigurationView: View {
         isSavingWifi = true
         Task {
             do {
-                try await httpClient.setWifiCredentials(ssid: wifiSsid, password: wifiPassword, at: ip)
+                try await httpClient.setWifiCredentials(ssid: wifiSsid, password: wifiPassword, at: ip, deviceId: device.deviceId)
                 await MainActor.run {
                     isSavingWifi = false
                     successMessage = "WiFi settings saved. The device is restarting..."
@@ -200,7 +200,8 @@ struct DeviceConfigurationView: View {
                     port: port,
                     user: mqttUser,
                     password: mqttPassword,
-                    at: ip
+                    at: ip,
+                    deviceId: device.deviceId
                 )
                 await MainActor.run {
                     isSavingMqtt = false
@@ -224,7 +225,7 @@ struct DeviceConfigurationView: View {
         isSavingPassword = true
         Task {
             do {
-                try await httpClient.setDevicePassword(devicePassword, at: ip)
+                try await httpClient.setDevicePassword(devicePassword, at: ip, deviceId: device.deviceId)
                 await MainActor.run {
                     isSavingPassword = false
                     if devicePassword.isEmpty {

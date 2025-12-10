@@ -52,7 +52,7 @@ class DeviceDiscovery: NSObject, ObservableObject {
         netServiceBrowser?.delegate = self
         // Schedule on main run loop to ensure delegate callbacks work
         netServiceBrowser?.schedule(in: .main, forMode: .common)
-        netServiceBrowser?.searchForServices(ofType: "_http._tcp.", inDomain: "local.")
+        netServiceBrowser?.searchForServices(ofType: "_famesmartblinds._tcp.", inDomain: "local.")
         NSLog("[Discovery] NetServiceBrowser started")
     }
 
@@ -85,7 +85,7 @@ class DeviceDiscovery: NSObject, ObservableObject {
         // Restart the browser to catch any new announcements
         if isContinuousDiscoveryActive {
             netServiceBrowser?.stop()
-            netServiceBrowser?.searchForServices(ofType: "_http._tcp.", inDomain: "local.")
+            netServiceBrowser?.searchForServices(ofType: "_famesmartblinds._tcp.", inDomain: "local.")
         }
 
         await MainActor.run {

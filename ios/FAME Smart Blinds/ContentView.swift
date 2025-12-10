@@ -2,13 +2,22 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var discovery: DeviceDiscovery
+    @EnvironmentObject var registry: DeviceRegistry
+    @StateObject private var authManager = AuthenticationManager.shared
 
     @State private var selectedTab = 0
+    @State private var showingAuthSheet = false
 
     #if targetEnvironment(macCatalyst)
     @State private var selectedDevice: BlindDevice?
     @State private var showingSetup: Bool = false
     #endif
+
+    /// Device that needs authentication (looked up from registry)
+    private var deviceNeedingAuth: BlindDevice? {
+        guard let deviceId = authManager.deviceNeedingAuth else { return nil }
+        return registry.deviceList.first { $0.deviceId == deviceId }
+    }
 
     var body: some View {
         #if targetEnvironment(macCatalyst)
@@ -29,6 +38,26 @@ struct ContentView: View {
                 )
             }
         }
+        .onChange(of: authManager.deviceNeedingAuth) { _, newValue in
+            showingAuthSheet = newValue != nil
+        }
+        .sheet(isPresented: $showingAuthSheet) {
+            if let device = deviceNeedingAuth, let ip = device.ipAddress {
+                DeviceAuthenticationSheet(
+                    deviceId: device.deviceId,
+                    deviceName: device.name,
+                    ipAddress: ip,
+                    onAuthenticated: {
+                        authManager.clearAuthenticationRequest()
+                        showingAuthSheet = false
+                    },
+                    onCancel: {
+                        authManager.clearAuthenticationRequest()
+                        showingAuthSheet = false
+                    }
+                )
+            }
+        }
         #else
         // iOS/iPadOS: Use TabView for mobile experience
         TabView(selection: $selectedTab) {
@@ -43,6 +72,26 @@ struct ContentView: View {
                     Label("Setup", systemImage: "gear")
                 }
                 .tag(1)
+        }
+        .onChange(of: authManager.deviceNeedingAuth) { _, newValue in
+            showingAuthSheet = newValue != nil
+        }
+        .sheet(isPresented: $showingAuthSheet) {
+            if let device = deviceNeedingAuth, let ip = device.ipAddress {
+                DeviceAuthenticationSheet(
+                    deviceId: device.deviceId,
+                    deviceName: device.name,
+                    ipAddress: ip,
+                    onAuthenticated: {
+                        authManager.clearAuthenticationRequest()
+                        showingAuthSheet = false
+                    },
+                    onCancel: {
+                        authManager.clearAuthenticationRequest()
+                        showingAuthSheet = false
+                    }
+                )
+            }
         }
         #endif
     }

@@ -208,9 +208,9 @@ struct DeviceControlView: View {
         // Rename via HTTP (BLE is only used for initial setup)
         Task {
             do {
-                try await httpClient.setDeviceName(newDeviceName, at: ip)
+                try await httpClient.setDeviceName(newDeviceName, at: ip, deviceId: device.deviceId)
                 // Restart to apply new name to mDNS
-                try await httpClient.sendCommand(.restart, to: ip)
+                try await httpClient.sendCommand(.restart, to: ip, deviceId: device.deviceId)
                 await MainActor.run {
                     triggerRescanAfterRestart()
                 }
@@ -483,7 +483,7 @@ struct DeviceControlView: View {
         Task {
             do {
                 if canControlViaHTTP {
-                    try await httpClient.sendCommand(command, to: device.ipAddress!)
+                    try await httpClient.sendCommand(command, to: device.ipAddress!, deviceId: device.deviceId)
 
                     // Update local state optimistically
                     // SSE will provide real-time updates, no need to start polling
@@ -549,7 +549,7 @@ struct DeviceControlView: View {
             device.updateFromDeviceStatus(status)
         }
 
-        sseClient.connect(to: ip)
+        sseClient.connect(to: ip, deviceId: device.deviceId)
     }
 
     private func stopSSE() {

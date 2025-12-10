@@ -132,7 +132,8 @@ struct MQTTConfigurationView: View {
                     port: port,
                     user: mqttUser,
                     password: mqttPassword,
-                    at: ip
+                    at: ip,
+                    deviceId: device.deviceId
                 )
                 await MainActor.run {
                     isSaving = false

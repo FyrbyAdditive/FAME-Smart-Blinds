@@ -16,6 +16,8 @@ class SSEClient: NSObject, ObservableObject {
     private var urlSession: URLSession?
     private var dataTask: URLSessionDataTask?
     private var ipAddress: String?
+    private var deviceId: String?
+    private var cachedPassword: String?  // Password captured at connect time
     private var endpoint: SSEEndpoint = .status
     private var buffer = Data()
 
@@ -27,6 +29,9 @@ class SSEClient: NSObject, ObservableObject {
 
     // Callback for log entries
     var onLogReceived: ((String) -> Void)?
+
+    // Callback when authentication is required
+    var onAuthenticationRequired: (() -> Void)?
 
     // Reconnection
     private var reconnectTask: Task<Void, Never>?
@@ -41,14 +46,20 @@ class SSEClient: NSObject, ObservableObject {
     /// Connect to a device's SSE endpoint
     /// - Parameters:
     ///   - ipAddress: The device IP address
+    ///   - deviceId: The device ID for authentication
     ///   - endpoint: Which SSE endpoint to connect to (.status for device control, .logs for log streaming)
-    func connect(to ipAddress: String, endpoint: SSEEndpoint = .status) {
+    @MainActor
+    func connect(to ipAddress: String, deviceId: String, endpoint: SSEEndpoint = .status) {
         disconnect()
 
         self.ipAddress = ipAddress
+        self.deviceId = deviceId
         self.endpoint = endpoint
         self.shouldReconnect = true
         self.reconnectAttempts = 0
+
+        // Capture password on main actor before starting connection
+        self.cachedPassword = AuthenticationManager.shared.getPassword(forDeviceId: deviceId)
 
         startConnection()
     }
@@ -62,6 +73,7 @@ class SSEClient: NSObject, ObservableObject {
         dataTask = nil
         urlSession?.invalidateAndCancel()
         urlSession = nil
+        cachedPassword = nil
 
         bufferQueue.sync {
             buffer = Data()
@@ -73,7 +85,7 @@ class SSEClient: NSObject, ObservableObject {
     }
 
     private func startConnection() {
-        guard let ipAddress = ipAddress else { return }
+        guard let ipAddress = ipAddress, let deviceId = deviceId else { return }
         guard shouldReconnect else { return }
 
         let url = URL(string: "http://\(ipAddress)\(endpoint.rawValue)")!
@@ -90,6 +102,11 @@ class SSEClient: NSObject, ObservableObject {
         var request = URLRequest(url: url)
         request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
         request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
+
+        // Add authentication header if we have a cached password
+        if let password = cachedPassword {
+            request.setValue(password, forHTTPHeaderField: "X-Device-Password")
+        }
 
         dataTask = urlSession?.dataTask(with: request)
         dataTask?.resume()
@@ -194,6 +211,20 @@ extension SSEClient: URLSessionDataDelegate {
             print("[SSE] Response status: \(httpResponse.statusCode)")
             if httpResponse.statusCode == 200 {
                 completionHandler(.allow)
+            } else if httpResponse.statusCode == 401 {
+                // Authentication required - notify and don't reconnect
+                print("[SSE] Authentication required (401)")
+                shouldReconnect = false
+                DispatchQueue.main.async {
+                    self.lastError = "Authentication required"
+                    if let deviceId = self.deviceId {
+                        Task { @MainActor in
+                            AuthenticationManager.shared.handleAuthenticationRequired(forDeviceId: deviceId)
+                        }
+                    }
+                    self.onAuthenticationRequired?()
+                }
+                completionHandler(.cancel)
             } else {
                 completionHandler(.cancel)
             }

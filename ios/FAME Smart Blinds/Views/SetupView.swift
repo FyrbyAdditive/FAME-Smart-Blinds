@@ -812,6 +812,15 @@ struct DevicePasswordConfigStep: View {
 
         if !password.isEmpty {
             bleManager.configureDevicePassword(password)
+
+            // Save password to keychain for future HTTP access
+            if let deviceId = device?.deviceId {
+                try? AuthenticationManager.shared.authenticate(
+                    deviceId: deviceId,
+                    password: password,
+                    expiry: .unlimited  // Device setup = permanent auth
+                )
+            }
         }
 
         // Wait briefly then continue

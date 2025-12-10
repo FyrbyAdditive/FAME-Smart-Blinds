@@ -16,9 +16,41 @@ class HTTPClient: ObservableObject {
         session = URLSession(configuration: config)
     }
 
+    // MARK: - Authentication Helpers
+
+    /// Add authentication header to request if we have a valid session
+    private func addAuthHeader(to request: inout URLRequest, forDeviceId deviceId: String) async {
+        let password = await MainActor.run {
+            AuthenticationManager.shared.getPassword(forDeviceId: deviceId)
+        }
+        if let password = password {
+            request.setValue(password, forHTTPHeaderField: "X-Device-Password")
+        }
+    }
+
+    /// Check response for 401 and handle auth failure
+    private func handleAuthResponse(_ response: URLResponse?, data: Data, forDeviceId deviceId: String) throws {
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw HTTPError.invalidResponse
+        }
+
+        if httpResponse.statusCode == 401 {
+            // Clear the invalid session and signal auth needed
+            Task { @MainActor in
+                AuthenticationManager.shared.handleAuthenticationRequired(forDeviceId: deviceId)
+            }
+            throw HTTPError.authenticationRequired(deviceId)
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
+            throw HTTPError.serverError(httpResponse.statusCode, errorBody)
+        }
+    }
+
     // MARK: - Device Control
 
-    func sendCommand(_ command: BlindCommand, to ipAddress: String) async throws {
+    func sendCommand(_ command: BlindCommand, to ipAddress: String, deviceId: String) async throws {
         // Use the simple endpoints which don't require a body
         // This avoids ESPAsyncWebServer body-handling race conditions
         let endpoint: String
@@ -37,19 +69,12 @@ class HTTPClient: ObservableObject {
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
+        await addAuthHeader(to: &request, forDeviceId: deviceId)
 
         print("[HTTP] POST \(url)")
 
         let (data, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw HTTPError.invalidResponse
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw HTTPError.serverError(httpResponse.statusCode, errorBody)
-        }
+        try handleAuthResponse(response, data: data, forDeviceId: deviceId)
 
         print("[HTTP] Command sent successfully")
     }
@@ -60,7 +85,7 @@ class HTTPClient: ObservableObject {
         guard let ip = device.ipAddress else {
             throw HTTPError.noIPAddress
         }
-        try await sendCommand(.open, to: ip)
+        try await sendCommand(.open, to: ip, deviceId: device.deviceId)
     }
 
     @MainActor
@@ -68,7 +93,7 @@ class HTTPClient: ObservableObject {
         guard let ip = device.ipAddress else {
             throw HTTPError.noIPAddress
         }
-        try await sendCommand(.close, to: ip)
+        try await sendCommand(.close, to: ip, deviceId: device.deviceId)
     }
 
     @MainActor
@@ -76,57 +101,43 @@ class HTTPClient: ObservableObject {
         guard let ip = device.ipAddress else {
             throw HTTPError.noIPAddress
         }
-        try await sendCommand(.stop, to: ip)
+        try await sendCommand(.stop, to: ip, deviceId: device.deviceId)
     }
 
     // MARK: - Device Configuration
 
-    func setDeviceName(_ name: String, at ipAddress: String) async throws {
+    func setDeviceName(_ name: String, at ipAddress: String, deviceId: String) async throws {
         let url = URL(string: "http://\(ipAddress)/name?name=\(name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? name)")!
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
+        await addAuthHeader(to: &request, forDeviceId: deviceId)
 
         print("[HTTP] POST \(url)")
 
         let (data, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw HTTPError.invalidResponse
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw HTTPError.serverError(httpResponse.statusCode, errorBody)
-        }
+        try handleAuthResponse(response, data: data, forDeviceId: deviceId)
 
         print("[HTTP] Device name set successfully")
     }
 
-    func setDevicePassword(_ password: String, at ipAddress: String) async throws {
+    func setDevicePassword(_ password: String, at ipAddress: String, deviceId: String) async throws {
         let encodedPassword = password.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? password
         let url = URL(string: "http://\(ipAddress)/password?password=\(encodedPassword)")!
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
+        await addAuthHeader(to: &request, forDeviceId: deviceId)
 
         print("[HTTP] POST /password")
 
         let (data, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw HTTPError.invalidResponse
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw HTTPError.serverError(httpResponse.statusCode, errorBody)
-        }
+        try handleAuthResponse(response, data: data, forDeviceId: deviceId)
 
         print("[HTTP] Device password set successfully")
     }
 
-    func setMqttConfig(broker: String, port: Int = 1883, user: String = "", password: String = "", at ipAddress: String) async throws {
+    func setMqttConfig(broker: String, port: Int = 1883, user: String = "", password: String = "", at ipAddress: String, deviceId: String) async throws {
         var urlString = "http://\(ipAddress)/mqtt?broker=\(broker.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? broker)&port=\(port)"
         if !user.isEmpty {
             urlString += "&user=\(user.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? user)"
@@ -139,89 +150,61 @@ class HTTPClient: ObservableObject {
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
+        await addAuthHeader(to: &request, forDeviceId: deviceId)
 
         print("[HTTP] POST /mqtt")
 
         let (data, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw HTTPError.invalidResponse
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw HTTPError.serverError(httpResponse.statusCode, errorBody)
-        }
+        try handleAuthResponse(response, data: data, forDeviceId: deviceId)
 
         print("[HTTP] MQTT config set successfully")
     }
 
-    func setWifiCredentials(ssid: String, password: String, at ipAddress: String) async throws {
+    func setWifiCredentials(ssid: String, password: String, at ipAddress: String, deviceId: String) async throws {
         let encodedSsid = ssid.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ssid
         let encodedPassword = password.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? password
         let url = URL(string: "http://\(ipAddress)/wifi?ssid=\(encodedSsid)&password=\(encodedPassword)")!
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
+        await addAuthHeader(to: &request, forDeviceId: deviceId)
 
         print("[HTTP] POST /wifi")
 
         let (data, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw HTTPError.invalidResponse
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw HTTPError.serverError(httpResponse.statusCode, errorBody)
-        }
+        try handleAuthResponse(response, data: data, forDeviceId: deviceId)
 
         print("[HTTP] WiFi credentials set successfully")
     }
 
-    func setOrientation(_ orientation: DeviceOrientation, at ipAddress: String) async throws {
+    func setOrientation(_ orientation: DeviceOrientation, at ipAddress: String, deviceId: String) async throws {
         let url = URL(string: "http://\(ipAddress)/orientation?orientation=\(orientation.rawValue)")!
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
+        await addAuthHeader(to: &request, forDeviceId: deviceId)
 
         print("[HTTP] POST /orientation: \(orientation.rawValue)")
 
         let (data, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw HTTPError.invalidResponse
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw HTTPError.serverError(httpResponse.statusCode, errorBody)
-        }
+        try handleAuthResponse(response, data: data, forDeviceId: deviceId)
 
         print("[HTTP] Orientation set successfully")
     }
 
-    func setSpeed(_ speed: Int, at ipAddress: String) async throws {
+    func setSpeed(_ speed: Int, at ipAddress: String, deviceId: String) async throws {
         let url = URL(string: "http://\(ipAddress)/speed")!
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         request.httpBody = "value=\(speed)".data(using: .utf8)
+        await addAuthHeader(to: &request, forDeviceId: deviceId)
 
         print("[HTTP] POST /speed: \(speed)")
 
         let (data, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw HTTPError.invalidResponse
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw HTTPError.serverError(httpResponse.statusCode, errorBody)
-        }
+        try handleAuthResponse(response, data: data, forDeviceId: deviceId)
 
         print("[HTTP] Speed set successfully")
     }
@@ -275,129 +258,93 @@ class HTTPClient: ObservableObject {
 
     // MARK: - Calibration
 
-    func startCalibration(at ipAddress: String) async throws {
+    func startCalibration(at ipAddress: String, deviceId: String) async throws {
         let url = URL(string: "http://\(ipAddress)/calibrate/start")!
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
+        await addAuthHeader(to: &request, forDeviceId: deviceId)
 
         print("[HTTP] POST /calibrate/start")
 
         let (data, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw HTTPError.invalidResponse
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw HTTPError.serverError(httpResponse.statusCode, errorBody)
-        }
+        try handleAuthResponse(response, data: data, forDeviceId: deviceId)
 
         print("[HTTP] Calibration started")
     }
 
-    func setBottomPosition(at ipAddress: String) async throws {
+    func setBottomPosition(at ipAddress: String, deviceId: String) async throws {
         let url = URL(string: "http://\(ipAddress)/calibrate/setbottom")!
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
+        await addAuthHeader(to: &request, forDeviceId: deviceId)
 
         print("[HTTP] POST /calibrate/setbottom")
 
         let (data, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw HTTPError.invalidResponse
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw HTTPError.serverError(httpResponse.statusCode, errorBody)
-        }
+        try handleAuthResponse(response, data: data, forDeviceId: deviceId)
 
         print("[HTTP] Bottom position set")
     }
 
-    func cancelCalibration(at ipAddress: String) async throws {
+    func cancelCalibration(at ipAddress: String, deviceId: String) async throws {
         let url = URL(string: "http://\(ipAddress)/calibrate/cancel")!
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
+        await addAuthHeader(to: &request, forDeviceId: deviceId)
 
         print("[HTTP] POST /calibrate/cancel")
 
         let (data, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw HTTPError.invalidResponse
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw HTTPError.serverError(httpResponse.statusCode, errorBody)
-        }
+        try handleAuthResponse(response, data: data, forDeviceId: deviceId)
 
         print("[HTTP] Calibration cancelled")
     }
 
-    func getCalibrationStatus(from ipAddress: String) async throws -> CalibrationStatusResponse {
+    func getCalibrationStatus(from ipAddress: String, deviceId: String) async throws -> CalibrationStatusResponse {
         let url = URL(string: "http://\(ipAddress)/calibrate/status")!
+
+        var request = URLRequest(url: url)
+        await addAuthHeader(to: &request, forDeviceId: deviceId)
 
         print("[HTTP] GET /calibrate/status")
 
-        let (data, response) = try await session.data(from: url)
-
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw HTTPError.invalidResponse
-        }
+        let (data, response) = try await session.data(for: request)
+        try handleAuthResponse(response, data: data, forDeviceId: deviceId)
 
         let status = try JSONDecoder().decode(CalibrationStatusResponse.self, from: data)
         print("[HTTP] Calibration status: \(status)")
         return status
     }
 
-    func openForce(at ipAddress: String) async throws {
+    func openForce(at ipAddress: String, deviceId: String) async throws {
         let url = URL(string: "http://\(ipAddress)/open/force")!
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
+        await addAuthHeader(to: &request, forDeviceId: deviceId)
 
         print("[HTTP] POST /open/force")
 
         let (data, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw HTTPError.invalidResponse
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw HTTPError.serverError(httpResponse.statusCode, errorBody)
-        }
+        try handleAuthResponse(response, data: data, forDeviceId: deviceId)
 
         print("[HTTP] Force open sent")
     }
 
-    func closeForce(at ipAddress: String) async throws {
+    func closeForce(at ipAddress: String, deviceId: String) async throws {
         let url = URL(string: "http://\(ipAddress)/close/force")!
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
+        await addAuthHeader(to: &request, forDeviceId: deviceId)
 
         print("[HTTP] POST /close/force")
 
         let (data, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw HTTPError.invalidResponse
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw HTTPError.serverError(httpResponse.statusCode, errorBody)
-        }
+        try handleAuthResponse(response, data: data, forDeviceId: deviceId)
 
         print("[HTTP] Force close sent")
     }
@@ -409,7 +356,7 @@ class HTTPClient: ObservableObject {
     /// 1. POST /ota/begin?size=TOTAL - Initialize update
     /// 2. POST /ota/chunk (body=chunk data) - Send each chunk
     /// 3. POST /ota/end - Finalize update
-    func uploadFirmware(_ firmwareData: Data, to ipAddress: String, progress: @escaping (Double) -> Void) async throws {
+    func uploadFirmware(_ firmwareData: Data, to ipAddress: String, deviceId: String, progress: @escaping (Double) -> Void) async throws {
         let chunkSize = 8192  // 8KB chunks - fits easily in ESP32 RAM
         let totalSize = firmwareData.count
         let totalChunks = (totalSize + chunkSize - 1) / chunkSize
@@ -421,18 +368,14 @@ class HTTPClient: ObservableObject {
         var beginRequest = URLRequest(url: beginUrl)
         beginRequest.httpMethod = "POST"
         beginRequest.timeoutInterval = 10
+        await addAuthHeader(to: &beginRequest, forDeviceId: deviceId)
 
         let (beginData, beginResponse) = try await session.data(for: beginRequest)
-
-        guard let beginHttpResponse = beginResponse as? HTTPURLResponse,
-              beginHttpResponse.statusCode == 200 else {
-            let errorBody = String(data: beginData, encoding: .utf8) ?? "Unknown error"
-            throw HTTPError.serverError((beginResponse as? HTTPURLResponse)?.statusCode ?? 0, errorBody)
-        }
+        try handleAuthResponse(beginResponse, data: beginData, forDeviceId: deviceId)
 
         print("[OTA] Begin successful, sending chunks...")
 
-        // Step 2: Send chunks
+        // Step 2: Send chunks (chunks use session established by begin)
         for chunkIndex in 0..<totalChunks {
             let startOffset = chunkIndex * chunkSize
             let endOffset = min(startOffset + chunkSize, totalSize)
@@ -447,6 +390,7 @@ class HTTPClient: ObservableObject {
             chunkRequest.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
             chunkRequest.setValue("\(chunkData.count)", forHTTPHeaderField: "Content-Length")
             chunkRequest.timeoutInterval = 30
+            await addAuthHeader(to: &chunkRequest, forDeviceId: deviceId)
 
             let (chunkResponseData, chunkResponse) = try await session.upload(for: chunkRequest, from: chunkData)
 
@@ -454,7 +398,7 @@ class HTTPClient: ObservableObject {
                   chunkHttpResponse.statusCode == 200 else {
                 let errorBody = String(data: chunkResponseData, encoding: .utf8) ?? "Unknown error"
                 // Abort OTA on failure
-                try? await abortOTA(at: ipAddress)
+                try? await abortOTA(at: ipAddress, deviceId: deviceId)
                 throw HTTPError.serverError((chunkResponse as? HTTPURLResponse)?.statusCode ?? 0, "Chunk \(chunkIndex) failed: \(errorBody)")
             }
 
@@ -477,50 +421,49 @@ class HTTPClient: ObservableObject {
         var endRequest = URLRequest(url: endUrl)
         endRequest.httpMethod = "POST"
         endRequest.timeoutInterval = 30
+        await addAuthHeader(to: &endRequest, forDeviceId: deviceId)
 
         let (endData, endResponse) = try await session.data(for: endRequest)
-
-        guard let endHttpResponse = endResponse as? HTTPURLResponse,
-              endHttpResponse.statusCode == 200 else {
-            let errorBody = String(data: endData, encoding: .utf8) ?? "Unknown error"
-            throw HTTPError.serverError((endResponse as? HTTPURLResponse)?.statusCode ?? 0, "Finalize failed: \(errorBody)")
-        }
+        try handleAuthResponse(endResponse, data: endData, forDeviceId: deviceId)
 
         print("[OTA] Firmware upload complete, device restarting...")
     }
 
     /// Abort an in-progress OTA update
-    func abortOTA(at ipAddress: String) async throws {
+    func abortOTA(at ipAddress: String, deviceId: String) async throws {
         let url = URL(string: "http://\(ipAddress)/ota/abort")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.timeoutInterval = 5
+        await addAuthHeader(to: &request, forDeviceId: deviceId)
 
         _ = try? await session.data(for: request)
         print("[OTA] Aborted")
     }
 
     /// Get OTA status
-    func getOTAStatus(from ipAddress: String) async throws -> OTAStatusResponse {
+    func getOTAStatus(from ipAddress: String, deviceId: String) async throws -> OTAStatusResponse {
         let url = URL(string: "http://\(ipAddress)/ota/status")!
-        let (data, _) = try await session.data(from: url)
+        var request = URLRequest(url: url)
+        await addAuthHeader(to: &request, forDeviceId: deviceId)
+        let (data, response) = try await session.data(for: request)
+        try handleAuthResponse(response, data: data, forDeviceId: deviceId)
         return try JSONDecoder().decode(OTAStatusResponse.self, from: data)
     }
 
     // MARK: - Device Logs
 
     /// Fetch device logs from the ring buffer
-    func getLogs(from ipAddress: String) async throws -> [String] {
+    func getLogs(from ipAddress: String, deviceId: String) async throws -> [String] {
         let url = URL(string: "http://\(ipAddress)/logs")!
+
+        var request = URLRequest(url: url)
+        await addAuthHeader(to: &request, forDeviceId: deviceId)
 
         print("[HTTP] GET /logs")
 
-        let (data, response) = try await session.data(from: url)
-
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw HTTPError.invalidResponse
-        }
+        let (data, response) = try await session.data(for: request)
+        try handleAuthResponse(response, data: data, forDeviceId: deviceId)
 
         let logsResponse = try JSONDecoder().decode(DeviceLogsResponse.self, from: data)
         print("[HTTP] Received \(logsResponse.logs.count) log entries")
@@ -528,51 +471,59 @@ class HTTPClient: ObservableObject {
     }
 
     /// Clear device logs
-    func clearLogs(at ipAddress: String) async throws {
+    func clearLogs(at ipAddress: String, deviceId: String) async throws {
         let url = URL(string: "http://\(ipAddress)/logs")!
 
         var request = URLRequest(url: url)
         request.httpMethod = "DELETE"
+        await addAuthHeader(to: &request, forDeviceId: deviceId)
 
         print("[HTTP] DELETE /logs")
 
         let (data, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw HTTPError.invalidResponse
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw HTTPError.serverError(httpResponse.statusCode, errorBody)
-        }
+        try handleAuthResponse(response, data: data, forDeviceId: deviceId)
 
         print("[HTTP] Logs cleared")
     }
 
     // MARK: - Factory Reset
 
-    func factoryReset(at ipAddress: String) async throws {
+    func factoryReset(at ipAddress: String, deviceId: String) async throws {
         let url = URL(string: "http://\(ipAddress)/factory-reset")!
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.timeoutInterval = 10
+        await addAuthHeader(to: &request, forDeviceId: deviceId)
 
         print("[HTTP] POST /factory-reset")
 
         let (data, response) = try await session.data(for: request)
+        try handleAuthResponse(response, data: data, forDeviceId: deviceId)
+
+        print("[HTTP] Factory reset successful, device restarting...")
+    }
+
+    // MARK: - Test Authentication
+
+    /// Test if a password is valid for a device (tries a protected endpoint)
+    func testAuthentication(password: String, ipAddress: String, deviceId: String) async throws -> Bool {
+        // Try to access a simple protected endpoint with the provided password
+        let url = URL(string: "http://\(ipAddress)/calibrate/status")!
+
+        var request = URLRequest(url: url)
+        request.setValue(password, forHTTPHeaderField: "X-Device-Password")
+        request.timeoutInterval = 5
+
+        print("[HTTP] Testing authentication")
+
+        let (_, response) = try await session.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw HTTPError.invalidResponse
         }
 
-        guard httpResponse.statusCode == 200 else {
-            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw HTTPError.serverError(httpResponse.statusCode, errorBody)
-        }
-
-        print("[HTTP] Factory reset successful, device restarting...")
+        return httpResponse.statusCode == 200
     }
 }
 
@@ -611,6 +562,7 @@ struct DeviceInfo: Codable {
     let mqttBroker: String?
     let mqttPort: Int?
     let mqttUser: String?
+    let passwordRequired: Bool?  // true if device has a password set
 
     var deviceOrientation: DeviceOrientation {
         DeviceOrientation(rawValue: orientation ?? "left") ?? .left
@@ -618,6 +570,10 @@ struct DeviceInfo: Codable {
 
     var servoSpeed: Int {
         speed ?? 500  // Default speed
+    }
+
+    var requiresPassword: Bool {
+        passwordRequired ?? false
     }
 }
 
@@ -671,6 +627,7 @@ enum HTTPError: LocalizedError {
     case noIPAddress
     case invalidResponse
     case serverError(Int, String)
+    case authenticationRequired(String)  // Device ID that needs auth
 
     var errorDescription: String? {
         switch self {
@@ -680,7 +637,15 @@ enum HTTPError: LocalizedError {
             return "Invalid response from device"
         case .serverError(let code, let message):
             return "Server error (\(code)): \(message)"
+        case .authenticationRequired:
+            return "Authentication required"
         }
+    }
+
+    var isAuthenticationError: Bool {
+        if case .authenticationRequired = self { return true }
+        if case .serverError(401, _) = self { return true }
+        return false
     }
 }
 

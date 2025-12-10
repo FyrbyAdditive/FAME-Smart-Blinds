@@ -375,7 +375,7 @@ struct DeviceSettingsView: View {
         isSavingOrientation = true
         Task {
             do {
-                try await httpClient.setOrientation(orientation, at: ip)
+                try await httpClient.setOrientation(orientation, at: ip, deviceId: device.deviceId)
                 await MainActor.run {
                     isSavingOrientation = false
                     successMessage = "Orientation updated to \(orientation.displayName)"
@@ -417,7 +417,7 @@ struct DeviceSettingsView: View {
         }
 
         do {
-            try await httpClient.setSpeed(speed, at: ip)
+            try await httpClient.setSpeed(speed, at: ip, deviceId: device.deviceId)
             await MainActor.run {
                 isSavingSpeed = false
             }
@@ -490,7 +490,7 @@ struct DeviceSettingsView: View {
         Task {
             do {
                 print("[OTA] Starting upload to \(ip)")
-                try await httpClient.uploadFirmware(fileData, to: ip) { progress in
+                try await httpClient.uploadFirmware(fileData, to: ip, deviceId: device.deviceId) { progress in
                     Task { @MainActor in
                         uploadProgress = progress
                     }
@@ -523,7 +523,7 @@ struct DeviceSettingsView: View {
 
         Task {
             do {
-                try await httpClient.sendCommand(.restart, to: ip)
+                try await httpClient.sendCommand(.restart, to: ip, deviceId: device.deviceId)
                 await MainActor.run {
                     successMessage = "Device is restarting..."
                     showingSuccess = true
@@ -544,7 +544,7 @@ struct DeviceSettingsView: View {
 
         Task {
             do {
-                try await httpClient.factoryReset(at: ip)
+                try await httpClient.factoryReset(at: ip, deviceId: device.deviceId)
                 await MainActor.run {
                     isResetting = false
                     successMessage = "Factory reset complete. The device will restart and need to be set up again."
@@ -725,7 +725,7 @@ struct DeviceLogsView: View {
         sseClient.onLogReceived = { logEntry in
             logs.append(logEntry)
         }
-        sseClient.connect(to: ip, endpoint: .logs)
+        sseClient.connect(to: ip, deviceId: device.deviceId, endpoint: .logs)
     }
 
     private func stopSSE() {
@@ -744,7 +744,7 @@ struct DeviceLogsView: View {
 
         Task {
             do {
-                let fetchedLogs = try await httpClient.getLogs(from: ip)
+                let fetchedLogs = try await httpClient.getLogs(from: ip, deviceId: device.deviceId)
                 await MainActor.run {
                     logs = fetchedLogs
                     isLoading = false
@@ -763,7 +763,7 @@ struct DeviceLogsView: View {
 
         Task {
             do {
-                try await httpClient.clearLogs(at: ip)
+                try await httpClient.clearLogs(at: ip, deviceId: device.deviceId)
                 await MainActor.run {
                     logs = []
                 }

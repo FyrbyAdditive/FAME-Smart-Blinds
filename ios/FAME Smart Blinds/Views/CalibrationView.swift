@@ -52,7 +52,7 @@ struct CalibrationView: View {
                         if let ip = device.ipAddress {
                             do {
                                 // Cancel on firmware to reset state from complete to idle
-                                try await httpClient.cancelCalibration(at: ip)
+                                try await httpClient.cancelCalibration(at: ip, deviceId: device.deviceId)
                             } catch {
                                 print("[CalibrationView] Failed to reset firmware state: \(error)")
                             }
@@ -288,7 +288,7 @@ struct CalibrationView: View {
 
         Task {
             do {
-                try await httpClient.startCalibration(at: ip)
+                try await httpClient.startCalibration(at: ip, deviceId: device.deviceId)
                 await refreshStatus()
             } catch {
                 errorMessage = error.localizedDescription
@@ -303,7 +303,7 @@ struct CalibrationView: View {
 
         Task {
             do {
-                try await httpClient.setBottomPosition(at: ip)
+                try await httpClient.setBottomPosition(at: ip, deviceId: device.deviceId)
                 await refreshStatus()
             } catch {
                 errorMessage = error.localizedDescription
@@ -318,7 +318,7 @@ struct CalibrationView: View {
 
         Task {
             do {
-                try await httpClient.cancelCalibration(at: ip)
+                try await httpClient.cancelCalibration(at: ip, deviceId: device.deviceId)
                 await refreshStatus()
             } catch {
                 errorMessage = error.localizedDescription
@@ -339,7 +339,7 @@ struct CalibrationView: View {
         Task {
             do {
                 // During calibration, use force to bypass limits
-                try await httpClient.openForce(at: ip)
+                try await httpClient.openForce(at: ip, deviceId: device.deviceId)
             } catch {
                 errorMessage = error.localizedDescription
             }
@@ -351,7 +351,7 @@ struct CalibrationView: View {
         Task {
             do {
                 // During calibration, use force to bypass limits
-                try await httpClient.closeForce(at: ip)
+                try await httpClient.closeForce(at: ip, deviceId: device.deviceId)
             } catch {
                 errorMessage = error.localizedDescription
             }
@@ -362,7 +362,7 @@ struct CalibrationView: View {
         guard let ip = device.ipAddress else { return }
         Task {
             do {
-                try await httpClient.sendCommand(.stop, to: ip)
+                try await httpClient.sendCommand(.stop, to: ip, deviceId: device.deviceId)
             } catch {
                 errorMessage = error.localizedDescription
             }
@@ -373,7 +373,7 @@ struct CalibrationView: View {
     private func refreshStatus() async {
         guard let ip = device.ipAddress else { return }
         do {
-            let status = try await httpClient.getCalibrationStatus(from: ip)
+            let status = try await httpClient.getCalibrationStatus(from: ip, deviceId: device.deviceId)
             device.updateFromCalibrationStatus(status)
         } catch {
             print("[CalibrationView] Failed to refresh status: \(error)")

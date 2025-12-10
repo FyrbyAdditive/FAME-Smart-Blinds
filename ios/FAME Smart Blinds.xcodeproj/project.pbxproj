@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		0330A2A16B87FEE3651B42C8 /* DeviceDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B35C6B079F98FF830BBB7BC /* DeviceDiscovery.swift */; };
 		2223CAA62EE2091200BE7074 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2223CAA52EE2091200BE7074 /* AboutView.swift */; };
+		223A6AEE2EE9099800A87DBF /* AuthenticationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 223A6AED2EE9099800A87DBF /* AuthenticationManager.swift */; };
+		223A6AF02EE909A000A87DBF /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 223A6AEF2EE909A000A87DBF /* KeychainManager.swift */; };
 		22CBEC6D2EE89A7E009614B2 /* WiFiConfigurationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22CBEC6C2EE89A7E009614B2 /* WiFiConfigurationView.swift */; };
 		22CBEC6E2EE89A7E009614B2 /* MQTTConfigurationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22CBEC6A2EE89A7E009614B2 /* MQTTConfigurationView.swift */; };
 		22CBEC6F2EE89A7E009614B2 /* DeviceConfigurationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22CBEC692EE89A7E009614B2 /* DeviceConfigurationView.swift */; };
@@ -21,6 +23,7 @@
 		918F829E343DE91CA4D6960C /* DeviceRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C0E3C777D21F4B37A257593 /* DeviceRegistry.swift */; };
 		A36C44262446E34C32F07C75 /* FAMESmartBlindsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AC7163DD235023F6C13489A /* FAMESmartBlindsApp.swift */; };
 		ASSETS0001RESOURCES00001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 22EDA7F22EDD1B9C0025CDA6 /* Assets.xcassets */; };
+		AUTH0001BUILDFILE001 /* DeviceAuthenticationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AUTH0001FILEREF0001 /* DeviceAuthenticationSheet.swift */; };
 		BE658E27AFA7E43E3C10DC95 /* BLEManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C48D1077F7C549269D32F49 /* BLEManager.swift */; };
 		D3CDBDE8837419A7FC79C6E2 /* HTTPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 239F8D28B52D3163C7EB0929 /* HTTPClient.swift */; };
 		D518A293E6C4DDB93F49DB99 /* BlindDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED790236B0876F07EE8DC2B6 /* BlindDevice.swift */; };
@@ -33,6 +36,8 @@
 /* Begin PBXFileReference section */
 		0EE33A1BC3AE08D3E18BF5D8 /* CalibrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationView.swift; sourceTree = "<group>"; };
 		2223CAA52EE2091200BE7074 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
+		223A6AED2EE9099800A87DBF /* AuthenticationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationManager.swift; sourceTree = "<group>"; };
+		223A6AEF2EE909A000A87DBF /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
 		22CBEC692EE89A7E009614B2 /* DeviceConfigurationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceConfigurationView.swift; sourceTree = "<group>"; };
 		22CBEC6A2EE89A7E009614B2 /* MQTTConfigurationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MQTTConfigurationView.swift; sourceTree = "<group>"; };
 		22CBEC6B2EE89A7E009614B2 /* PasswordConfigurationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordConfigurationView.swift; sourceTree = "<group>"; };
@@ -50,6 +55,7 @@
 		9B35C6B079F98FF830BBB7BC /* DeviceDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceDiscovery.swift; sourceTree = "<group>"; };
 		A53D414B528ABE2C7FA02981 /* SetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupView.swift; sourceTree = "<group>"; };
 		A8333C37F54BA6CCED0EC174 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		AUTH0001FILEREF0001 /* DeviceAuthenticationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAuthenticationSheet.swift; sourceTree = "<group>"; };
 		DF9610AAAC80290BDA24165D /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		ED790236B0876F07EE8DC2B6 /* BlindDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlindDevice.swift; sourceTree = "<group>"; };
 		F04771F83E6586A5249848A8 /* DeviceControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceControlView.swift; sourceTree = "<group>"; };
@@ -70,10 +76,12 @@
 		1EDC702E2ECA47A1331FEAF6 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				223A6AED2EE9099800A87DBF /* AuthenticationManager.swift */,
 				3C48D1077F7C549269D32F49 /* BLEManager.swift */,
 				9B35C6B079F98FF830BBB7BC /* DeviceDiscovery.swift */,
 				3C0E3C777D21F4B37A257593 /* DeviceRegistry.swift */,
 				239F8D28B52D3163C7EB0929 /* HTTPClient.swift */,
+				223A6AEF2EE909A000A87DBF /* KeychainManager.swift */,
 				SSE0001FILEREF00001 /* SSEClient.swift */,
 			);
 			path = Services;
@@ -109,6 +117,7 @@
 				0EE33A1BC3AE08D3E18BF5D8 /* CalibrationView.swift */,
 				F04771F83E6586A5249848A8 /* DeviceControlView.swift */,
 				22CBEC692EE89A7E009614B2 /* DeviceConfigurationView.swift */,
+				AUTH0001FILEREF0001 /* DeviceAuthenticationSheet.swift */,
 				22CBEC6A2EE89A7E009614B2 /* MQTTConfigurationView.swift */,
 				22CBEC6B2EE89A7E009614B2 /* PasswordConfigurationView.swift */,
 				22CBEC6C2EE89A7E009614B2 /* WiFiConfigurationView.swift */,
@@ -214,6 +223,7 @@
 				22CBEC702EE89A7E009614B2 /* PasswordConfigurationView.swift in Sources */,
 				E1DC1619AAD25D3867661F43 /* CalibrationView.swift in Sources */,
 				FEE78385BB6A104F1EA71DE8 /* Constants.swift in Sources */,
+				223A6AEE2EE9099800A87DBF /* AuthenticationManager.swift in Sources */,
 				3B8E711B609221A1A037DC15 /* ContentView.swift in Sources */,
 				2EA3C4D82A6BC92C7D366D7C /* DeviceControlView.swift in Sources */,
 				0330A2A16B87FEE3651B42C8 /* DeviceDiscovery.swift in Sources */,
@@ -221,10 +231,12 @@
 				2223CAA62EE2091200BE7074 /* AboutView.swift in Sources */,
 				918F829E343DE91CA4D6960C /* DeviceRegistry.swift in Sources */,
 				8EB823817C9BAD7E05C18B9F /* DeviceSettingsView.swift in Sources */,
+				223A6AF02EE909A000A87DBF /* KeychainManager.swift in Sources */,
 				A36C44262446E34C32F07C75 /* FAMESmartBlindsApp.swift in Sources */,
 				D3CDBDE8837419A7FC79C6E2 /* HTTPClient.swift in Sources */,
 				SSE0001BUILDFILE00001 /* SSEClient.swift in Sources */,
 				77E8B69CA985334F4F0A11A7 /* SetupView.swift in Sources */,
+				AUTH0001BUILDFILE001 /* DeviceAuthenticationSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -240,7 +252,7 @@
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER = NO;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
@@ -261,7 +273,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.fyrbyadditive.famesmartblinds;
 				PRODUCT_NAME = "FAME Smart Blinds";
 				SDKROOT = iphoneos;
@@ -308,7 +320,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = QS865LKS7W;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -329,7 +341,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.2;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -376,7 +388,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = QS865LKS7W;
 				ENABLE_NS_ASSERTIONS = NO;
@@ -391,7 +403,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.2;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -412,7 +424,7 @@
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER = NO;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
@@ -433,7 +445,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.fyrbyadditive.famesmartblinds;
 				PRODUCT_NAME = "FAME Smart Blinds";
 				SDKROOT = iphoneos;

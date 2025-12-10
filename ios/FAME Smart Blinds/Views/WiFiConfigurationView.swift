@@ -116,7 +116,7 @@ struct WiFiConfigurationView: View {
         isSaving = true
         Task {
             do {
-                try await httpClient.setWifiCredentials(ssid: wifiSsid, password: wifiPassword, at: ip)
+                try await httpClient.setWifiCredentials(ssid: wifiSsid, password: wifiPassword, at: ip, deviceId: device.deviceId)
                 await MainActor.run {
                     isSaving = false
                     successMessage = "WiFi settings saved. The device is restarting..."

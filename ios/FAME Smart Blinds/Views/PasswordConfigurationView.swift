@@ -82,7 +82,7 @@ struct PasswordConfigurationView: View {
         isSaving = true
         Task {
             do {
-                try await httpClient.setDevicePassword(devicePassword, at: ip)
+                try await httpClient.setDevicePassword(devicePassword, at: ip, deviceId: device.deviceId)
                 await MainActor.run {
                     isSaving = false
                     if devicePassword.isEmpty {
