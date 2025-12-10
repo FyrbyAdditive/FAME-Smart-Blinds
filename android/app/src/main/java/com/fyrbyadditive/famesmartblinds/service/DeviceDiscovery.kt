@@ -451,21 +451,34 @@ class DeviceDiscovery @Inject constructor(
     /**
      * Schedule discovery restart after a delay.
      * Used after device setup completes to find the newly configured device.
+     * Does multiple aggressive restarts since Android NSD often misses newly-online services.
      */
     fun triggerDelayedDiscovery(delaySeconds: Int) {
-        Log.d(TAG, "Scheduling discovery restart in $delaySeconds seconds")
+        Log.d(TAG, "Scheduling post-setup discovery in $delaySeconds seconds")
         scope.launch {
             delay(delaySeconds * 1000L)
-            Log.d(TAG, "Running post-setup discovery")
 
-            // Clear IPs and restart
-            discoveredIpsMutex.withLock {
-                discoveredIps.clear()
-            }
+            // Do 3 quick restarts to catch the newly configured device
+            // Android NSD is notoriously unreliable at finding recently-online services
+            repeat(3) { attempt ->
+                if (!_isContinuousDiscoveryActive.value) return@launch
 
-            withContext(Dispatchers.Main) {
-                stopNsdDiscoverySafely()
-                startNsdDiscovery()
+                Log.i(TAG, "┌─────────────────────────────────────────────────┐")
+                Log.i(TAG, "│  Post-Setup Discovery (attempt ${attempt + 1}/3)             │")
+                Log.i(TAG, "└─────────────────────────────────────────────────┘")
+
+                // Clear IPs to allow re-checking
+                discoveredIpsMutex.withLock {
+                    discoveredIps.clear()
+                }
+
+                withContext(Dispatchers.Main) {
+                    stopNsdDiscoverySafely()
+                    startNsdDiscovery()
+                }
+
+                // Wait 4 seconds between attempts
+                delay(4000)
             }
         }
     }

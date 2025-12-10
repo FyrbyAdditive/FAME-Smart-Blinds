@@ -346,7 +346,12 @@ class SetupViewModel @Inject constructor(
         _setupStep.value = SetupStep.COMPLETE
     }
 
-    fun finishSetup(): Boolean {
+    /**
+     * Finish setup and prepare to navigate back to device list.
+     * This is a suspend function to allow for a brief delay showing
+     * the "Restarting..." UI before navigating.
+     */
+    suspend fun finishSetup(): Boolean {
         _isFinishing.value = true
 
         // Send restart command
@@ -366,8 +371,12 @@ class SetupViewModel @Inject constructor(
         // Clear BLE-only devices (newly setup device will be re-discovered via mDNS)
         deviceRepository.clearBleOnlyDevices()
 
-        // Schedule discovery
-        deviceDiscovery.triggerDelayedDiscovery(2)
+        // Schedule discovery for after device has restarted
+        deviceDiscovery.triggerDelayedDiscovery(3)
+
+        // Brief delay so user sees the "Restarting Device..." UI
+        // and the device has time to start its restart before we navigate
+        delay(1500)
 
         return true // Return true to dismiss
     }
