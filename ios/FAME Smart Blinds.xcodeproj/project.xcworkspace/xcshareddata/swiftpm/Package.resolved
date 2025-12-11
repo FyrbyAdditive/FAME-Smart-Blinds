@@ -1,0 +1,15 @@
+{
+  "originHash" : "68bff05841a75a68a60963c5ccb12c1f1c026a0bb50f1422d0319d2e048d6ec7",
+  "pins" : [
+    {
+      "identity" : "zap-sdk-ios",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/FyrbyAdditive/ZAP-SDK-iOS",
+      "state" : {
+        "revision" : "d5ab6cad09466f072f052e028dd3e75bebe4e495",
+        "version" : "1.0.2"
+      }
+    }
+  ],
+  "version" : 3
+}

@@ -30,7 +30,9 @@
 		E1DC1619AAD25D3867661F43 /* CalibrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EE33A1BC3AE08D3E18BF5D8 /* CalibrationView.swift */; };
 		FB124E2CF1BC1C3EF0C0D714 /* DeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F60D75CAF9228A75B7A683A /* DeviceListView.swift */; };
 		FEE78385BB6A104F1EA71DE8 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 956EC08E7727CEA97721AA43 /* Constants.swift */; };
+		FWUPD001BUILDFILE001 /* FirmwareUpdateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FWUPD001FILEREF001 /* FirmwareUpdateService.swift */; };
 		SSE0001BUILDFILE00001 /* SSEClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = SSE0001FILEREF00001 /* SSEClient.swift */; };
+		ZAPSDK00PKGPROD001 /* ZAPSDK in Frameworks */ = {isa = PBXBuildFile; productRef = ZAPSDK00PKGPRODREF /* ZAPSDK */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -60,8 +62,20 @@
 		ED790236B0876F07EE8DC2B6 /* BlindDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlindDevice.swift; sourceTree = "<group>"; };
 		F04771F83E6586A5249848A8 /* DeviceControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceControlView.swift; sourceTree = "<group>"; };
 		FE3531DB8754F0391CFA8409 /* FAME Smart Blinds.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "FAME Smart Blinds.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		FWUPD001FILEREF001 /* FirmwareUpdateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareUpdateService.swift; sourceTree = "<group>"; };
 		SSE0001FILEREF00001 /* SSEClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSEClient.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		ZAPSDK00FWKPHASE01 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				ZAPSDK00PKGPROD001 /* ZAPSDK in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		1BB6EBC2C903F240CC5BCE4A /* Models */ = {
@@ -80,6 +94,7 @@
 				3C48D1077F7C549269D32F49 /* BLEManager.swift */,
 				9B35C6B079F98FF830BBB7BC /* DeviceDiscovery.swift */,
 				3C0E3C777D21F4B37A257593 /* DeviceRegistry.swift */,
+				FWUPD001FILEREF001 /* FirmwareUpdateService.swift */,
 				239F8D28B52D3163C7EB0929 /* HTTPClient.swift */,
 				223A6AEF2EE909A000A87DBF /* KeychainManager.swift */,
 				SSE0001FILEREF00001 /* SSEClient.swift */,
@@ -153,6 +168,7 @@
 			buildConfigurationList = AC51FCB6E680C5FFAE910830 /* Build configuration list for PBXNativeTarget "FAME Smart Blinds" */;
 			buildPhases = (
 				18006E8232F81178DDEF3757 /* Sources */,
+				ZAPSDK00FWKPHASE01 /* Frameworks */,
 				RESOURCES001BUILDPHASE01 /* Resources */,
 			);
 			buildRules = (
@@ -161,6 +177,7 @@
 			);
 			name = "FAME Smart Blinds";
 			packageProductDependencies = (
+				ZAPSDK00PKGPRODREF /* ZAPSDK */,
 			);
 			productName = FAMESmartBlinds;
 			productReference = FE3531DB8754F0391CFA8409 /* FAME Smart Blinds.app */;
@@ -190,6 +207,9 @@
 			);
 			mainGroup = 35FE732197F8BE03797DFAB2;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				ZAPSDK00PKGREF0001 /* XCRemoteSwiftPackageReference "ZAP-SDK-iOS" */,
+			);
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -237,6 +257,7 @@
 				SSE0001BUILDFILE00001 /* SSEClient.swift in Sources */,
 				77E8B69CA985334F4F0A11A7 /* SetupView.swift in Sources */,
 				AUTH0001BUILDFILE001 /* DeviceAuthenticationSheet.swift in Sources */,
+				FWUPD001BUILDFILE001 /* FirmwareUpdateService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -480,6 +501,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		ZAPSDK00PKGREF0001 /* XCRemoteSwiftPackageReference "ZAP-SDK-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/FyrbyAdditive/ZAP-SDK-iOS";
+			requirement = {
+				kind = exactVersion;
+				version = 1.0.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		ZAPSDK00PKGPRODREF /* ZAPSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = ZAPSDK00PKGREF0001 /* XCRemoteSwiftPackageReference "ZAP-SDK-iOS" */;
+			productName = ZAPSDK;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 8BB9F48DAAAC241B1CF31A0B /* Project object */;
 }

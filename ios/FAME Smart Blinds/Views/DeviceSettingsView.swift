@@ -45,6 +45,13 @@ struct DeviceSettingsView: View {
     @State private var isSavingSpeed = false
     @State private var speedLoaded = false
 
+    // Firmware update state
+    @State private var availableUpdate: UpdateInfo?
+    @State private var isCheckingUpdates = false
+    @State private var isDownloading = false
+    @State private var downloadProgress: Double = 0
+    @State private var updateError: String?
+
     // Must keep delegate alive or callbacks won't fire
     @State private var pickerDelegate = FirmwarePickerDelegate()
 
@@ -202,35 +209,124 @@ struct DeviceSettingsView: View {
                         }
                     }
 
+                    // Check for updates button
                     Button {
-                        presentFilePicker()
+                        checkForUpdates()
                     } label: {
                         HStack {
-                            Image(systemName: "arrow.up.doc")
-                            Text("Update Firmware")
+                            Image(systemName: "icloud.and.arrow.down")
+                            Text("Check for Updates")
                             Spacer()
-                            if isUploading {
+                            if isCheckingUpdates {
                                 ProgressView()
                                     .scaleEffect(0.8)
                             }
                         }
                     }
-                    .disabled(device.ipAddress == nil || isUploading)
+                    .disabled(device.ipAddress == nil || isCheckingUpdates || isDownloading || isUploading)
 
-                    if isUploading {
+                    // Update error
+                    if let error = updateError {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+                            Text(error)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Button {
+                                updateError = nil
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+
+                    // Available update info
+                    if let update = availableUpdate {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Uploading firmware...")
+                            HStack {
+                                Image(systemName: "sparkles")
+                                    .foregroundColor(.blue)
+                                Text("Update Available: \(update.version)")
+                                    .fontWeight(.medium)
+                            }
+
+                            if let notes = update.releaseNotes {
+                                Text(notes)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+
+                            // Warning if app update required
+                            if update.requiresAppUpdate, let requiredVersion = update.requiredAppVersion {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .font(.caption)
+                                        .foregroundColor(.orange)
+                                    Text("App update to \(requiredVersion) required after install")
+                                        .font(.caption)
+                                        .foregroundColor(.orange)
+                                }
+                            }
+
+                            // Warning if cannot flash
+                            if !update.canFlash, let requiredFirmware = update.requiredFirmwareVersion {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.caption)
+                                        .foregroundColor(.red)
+                                    Text("Requires firmware \(requiredFirmware) or later first")
+                                        .font(.caption)
+                                        .foregroundColor(.red)
+                                }
+                            }
+
+                            // Download & Install button
+                            Button {
+                                downloadAndInstall()
+                            } label: {
+                                HStack {
+                                    Image(systemName: "arrow.down.circle.fill")
+                                    Text("Download & Install")
+                                }
+                                .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(!update.canFlash || isDownloading || isUploading)
+                        }
+                        .padding(.vertical, 4)
+                    }
+
+                    // Download/upload progress
+                    if isDownloading || isUploading {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(isDownloading && !isUploading ? "Downloading firmware..." : "Uploading firmware...")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
 
-                            ProgressView(value: uploadProgress)
+                            ProgressView(value: isDownloading ? downloadProgress : uploadProgress)
                                 .progressViewStyle(.linear)
 
-                            Text("\(Int(uploadProgress * 100))%")
+                            Text("\(Int((isDownloading ? downloadProgress : uploadProgress) * 100))%")
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
                         }
                     }
+
+                    // Manual update from file (fallback)
+                    Button {
+                        presentFilePicker()
+                    } label: {
+                        HStack {
+                            Image(systemName: "folder")
+                            Text("Update from File...")
+                            Spacer()
+                        }
+                    }
+                    .disabled(device.ipAddress == nil || isUploading || isDownloading)
                 }
 
                 // Actions Section
@@ -426,6 +522,108 @@ struct DeviceSettingsView: View {
                 isSavingSpeed = false
                 uploadError = error.localizedDescription
                 showingError = true
+            }
+        }
+    }
+
+    // MARK: - Firmware Update
+
+    private func checkForUpdates() {
+        guard firmwareVersion != "Unknown" && firmwareVersion != "Error loading" else {
+            updateError = "Unable to check updates - device info not loaded"
+            return
+        }
+
+        isCheckingUpdates = true
+        updateError = nil
+        availableUpdate = nil
+
+        let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
+
+        Task {
+            do {
+                let update = try await FirmwareUpdateService.shared.checkForUpdate(
+                    currentFirmwareVersion: firmwareVersion,
+                    currentAppVersion: appVersion
+                )
+                await MainActor.run {
+                    availableUpdate = update
+                    isCheckingUpdates = false
+                    if update == nil {
+                        successMessage = "Firmware is up to date"
+                        showingSuccess = true
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    updateError = "Unable to check for updates: \(error.localizedDescription)"
+                    isCheckingUpdates = false
+                }
+            }
+        }
+    }
+
+    private func downloadAndInstall() {
+        guard let update = availableUpdate else { return }
+        guard let ip = device.ipAddress else { return }
+
+        // Check if the update can be flashed
+        if !update.canFlash {
+            updateError = "Cannot install this update. Your device needs firmware \(update.requiredFirmwareVersion ?? "newer") or later first."
+            return
+        }
+
+        isDownloading = true
+        downloadProgress = 0
+        updateError = nil
+
+        Task {
+            do {
+                // Download firmware from ZAP
+                let firmwareData = try await FirmwareUpdateService.shared.downloadFirmware(
+                    version: update.version
+                ) { progress in
+                    Task { @MainActor in
+                        downloadProgress = progress * 0.5  // 0-50% for download
+                    }
+                }
+
+                // Upload to device
+                await MainActor.run {
+                    isUploading = true
+                }
+
+                try await httpClient.uploadFirmware(firmwareData, to: ip, deviceId: device.deviceId) { progress in
+                    Task { @MainActor in
+                        downloadProgress = 0.5 + (progress * 0.5)  // 50-100% for upload
+                    }
+                }
+
+                await MainActor.run {
+                    isDownloading = false
+                    isUploading = false
+                    availableUpdate = nil
+
+                    // Show success message with app update warning if needed
+                    if update.requiresAppUpdate, let requiredVersion = update.requiredAppVersion {
+                        successMessage = "Firmware updated to \(update.version). Device is restarting...\n\nIMPORTANT: Please update this app to version \(requiredVersion) or later."
+                    } else {
+                        successMessage = "Firmware updated to \(update.version). Device is restarting..."
+                    }
+                    showingSuccess = true
+                }
+
+                // Reload info after device restarts
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                await MainActor.run {
+                    loadDeviceInfo()
+                }
+            } catch {
+                await MainActor.run {
+                    isDownloading = false
+                    isUploading = false
+                    updateError = "Update failed: \(error.localizedDescription)"
+                }
             }
         }
     }
