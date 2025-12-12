@@ -6,8 +6,11 @@ import androidx.lifecycle.viewModelScope
 import com.fyrbyadditive.famesmartblinds.data.model.BlindCommand
 import com.fyrbyadditive.famesmartblinds.data.model.BlindDevice
 import com.fyrbyadditive.famesmartblinds.data.model.DeviceOrientation
+import com.fyrbyadditive.famesmartblinds.BuildConfig
 import com.fyrbyadditive.famesmartblinds.data.remote.AuthenticationRequiredException
+import com.fyrbyadditive.famesmartblinds.data.remote.FirmwareUpdateManager
 import com.fyrbyadditive.famesmartblinds.data.remote.HttpClient
+import com.fyrbyadditive.famesmartblinds.data.remote.UpdateInfo
 import com.fyrbyadditive.famesmartblinds.data.repository.DeviceRepository
 import com.fyrbyadditive.famesmartblinds.util.Constants
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,7 +26,8 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val deviceRepository: DeviceRepository,
-    private val httpClient: HttpClient
+    private val httpClient: HttpClient,
+    private val firmwareUpdateManager: FirmwareUpdateManager
 ) : ViewModel() {
 
     private val deviceId: String = checkNotNull(savedStateHandle["deviceId"])
@@ -66,6 +70,22 @@ class SettingsViewModel @Inject constructor(
 
     private val _successMessage = MutableStateFlow<String?>(null)
     val successMessage: StateFlow<String?> = _successMessage.asStateFlow()
+
+    // Firmware update state
+    private val _availableUpdate = MutableStateFlow<UpdateInfo?>(null)
+    val availableUpdate: StateFlow<UpdateInfo?> = _availableUpdate.asStateFlow()
+
+    private val _isCheckingUpdates = MutableStateFlow(false)
+    val isCheckingUpdates: StateFlow<Boolean> = _isCheckingUpdates.asStateFlow()
+
+    private val _isDownloading = MutableStateFlow(false)
+    val isDownloading: StateFlow<Boolean> = _isDownloading.asStateFlow()
+
+    private val _downloadProgress = MutableStateFlow(0f)
+    val downloadProgress: StateFlow<Float> = _downloadProgress.asStateFlow()
+
+    private val _updateError = MutableStateFlow<String?>(null)
+    val updateError: StateFlow<String?> = _updateError.asStateFlow()
 
     private var orientationLoaded = false
     private var speedLoaded = false
@@ -252,5 +272,98 @@ class SettingsViewModel @Inject constructor(
 
     fun clearSuccess() {
         _successMessage.value = null
+    }
+
+    fun clearUpdateError() {
+        _updateError.value = null
+    }
+
+    /**
+     * Check for firmware updates via the ZAP service.
+     */
+    fun checkForUpdates() {
+        val currentFirmware = _firmwareVersion.value
+        if (currentFirmware == "Unknown" || currentFirmware == "Error loading") {
+            _updateError.value = "Unable to check updates - device info not loaded"
+            return
+        }
+
+        _isCheckingUpdates.value = true
+        _updateError.value = null
+        _availableUpdate.value = null
+
+        viewModelScope.launch {
+            try {
+                val update = firmwareUpdateManager.checkForUpdate(
+                    currentFirmwareVersion = currentFirmware,
+                    currentAppVersion = BuildConfig.VERSION_NAME
+                )
+                _availableUpdate.value = update
+                if (update == null) {
+                    _successMessage.value = "Firmware is up to date"
+                }
+            } catch (e: Exception) {
+                _updateError.value = "Unable to check for updates: ${e.message}"
+            } finally {
+                _isCheckingUpdates.value = false
+            }
+        }
+    }
+
+    /**
+     * Download firmware from ZAP service and install it on the device.
+     */
+    fun downloadAndInstall() {
+        val update = _availableUpdate.value ?: return
+        val ip = _device.value?.ipAddress ?: return
+
+        // Check if the update can be flashed
+        if (!update.canFlash) {
+            _updateError.value = "Cannot install this update. Your device needs firmware ${update.requiredFirmwareVersion} or later first."
+            return
+        }
+
+        _isDownloading.value = true
+        _downloadProgress.value = 0f
+        _updateError.value = null
+
+        viewModelScope.launch {
+            try {
+                // Download firmware from ZAP
+                val firmwareData = firmwareUpdateManager.downloadFirmware(update.version) { progress ->
+                    _downloadProgress.value = progress * 0.5f // 0-50% for download
+                }
+
+                // Upload to device
+                _isUploading.value = true
+                httpClient.uploadFirmware(firmwareData, ip, deviceId) { progress ->
+                    _downloadProgress.value = 0.5f + (progress * 0.5f) // 50-100% for upload
+                }
+
+                _isDownloading.value = false
+                _isUploading.value = false
+                _availableUpdate.value = null
+
+                // Show success message with app update warning if needed
+                val message = if (update.requiresAppUpdate) {
+                    "Firmware updated to ${update.version}. Device is restarting...\n\nIMPORTANT: Please update this app to version ${update.requiredAppVersion} or later."
+                } else {
+                    "Firmware updated to ${update.version}. Device is restarting..."
+                }
+                _successMessage.value = message
+
+                // Reload info after device restarts
+                delay(5000)
+                loadDeviceInfo()
+            } catch (e: AuthenticationRequiredException) {
+                _isDownloading.value = false
+                _isUploading.value = false
+                // Auth modal will be shown by AuthenticationManager
+            } catch (e: Exception) {
+                _isDownloading.value = false
+                _isUploading.value = false
+                _updateError.value = "Update failed: ${e.message}"
+            }
+        }
     }
 }

@@ -44,6 +44,13 @@ fun SettingsScreen(
     val errorMessage by viewModel.errorMessage.collectAsState()
     val successMessage by viewModel.successMessage.collectAsState()
 
+    // Firmware update state
+    val availableUpdate by viewModel.availableUpdate.collectAsState()
+    val isCheckingUpdates by viewModel.isCheckingUpdates.collectAsState()
+    val isDownloading by viewModel.isDownloading.collectAsState()
+    val downloadProgress by viewModel.downloadProgress.collectAsState()
+    val updateError by viewModel.updateError.collectAsState()
+
     val context = LocalContext.current
 
     // File picker for firmware update
@@ -271,16 +278,16 @@ fun SettingsScreen(
                 }
             }
 
-            // Firmware update button
+            // Check for updates button
             TextButton(
-                onClick = { firmwarePicker.launch(arrayOf("application/octet-stream")) },
-                enabled = device?.ipAddress != null && !isUploading,
+                onClick = { viewModel.checkForUpdates() },
+                enabled = device?.ipAddress != null && !isCheckingUpdates && !isDownloading && !isUploading,
                 modifier = Modifier.padding(horizontal = 8.dp)
             ) {
-                Icon(Icons.Default.Upload, contentDescription = null)
+                Icon(Icons.Default.CloudDownload, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Update Firmware")
-                if (isUploading) {
+                Text("Check for Updates")
+                if (isCheckingUpdates) {
                     Spacer(Modifier.width(8.dp))
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
@@ -289,27 +296,175 @@ fun SettingsScreen(
                 }
             }
 
-            if (isUploading) {
+            // Update error
+            if (updateError != null) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Error,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = updateError ?: "",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(
+                            onClick = { viewModel.clearUpdateError() },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Dismiss",
+                                tint = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Available update info
+            if (availableUpdate != null) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.NewReleases,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "Update Available: ${availableUpdate?.version}",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+
+                        availableUpdate?.releaseNotes?.let { notes ->
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = notes,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+
+                        // Warning if app update required after install
+                        if (availableUpdate?.requiresAppUpdate == true) {
+                            Spacer(Modifier.height(8.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.tertiary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text = "App update to ${availableUpdate?.requiredAppVersion} required after install",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.tertiary
+                                )
+                            }
+                        }
+
+                        // Warning if cannot flash
+                        if (availableUpdate?.canFlash == false) {
+                            Spacer(Modifier.height(8.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Block,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text = "Requires firmware ${availableUpdate?.requiredFirmwareVersion} or later first",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(12.dp))
+
+                        // Download & Install button
+                        Button(
+                            onClick = { viewModel.downloadAndInstall() },
+                            enabled = availableUpdate?.canFlash == true && !isDownloading && !isUploading,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Download, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Download & Install")
+                        }
+                    }
+                }
+            }
+
+            // Download/upload progress
+            if (isDownloading || isUploading) {
                 Column(
                     modifier = Modifier.padding(horizontal = 16.dp)
                 ) {
                     Text(
-                        text = "Uploading firmware...",
+                        text = if (isDownloading && !isUploading) "Downloading firmware..." else "Uploading firmware...",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.height(4.dp))
                     LinearProgressIndicator(
-                        progress = { uploadProgress },
+                        progress = { if (isDownloading) downloadProgress else uploadProgress },
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "${(uploadProgress * 100).toInt()}%",
+                        text = "${((if (isDownloading) downloadProgress else uploadProgress) * 100).toInt()}%",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+            }
+
+            // Manual firmware update (fallback)
+            TextButton(
+                onClick = { firmwarePicker.launch(arrayOf("application/octet-stream")) },
+                enabled = device?.ipAddress != null && !isUploading && !isDownloading,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            ) {
+                Icon(Icons.Default.FolderOpen, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Update from File...")
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))

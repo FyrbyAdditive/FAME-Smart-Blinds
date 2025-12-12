@@ -12,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId = "com.fyrbyadditive.famesmartblinds"
-        minSdk = 26
+        minSdk = 28
         targetSdk = 35
         versionCode = 3
         versionName = "1.0.2"
@@ -75,6 +75,9 @@ dependencies {
 
     // Security - for encrypted credentials storage
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // ZAP SDK for firmware updates
+    implementation("com.github.FyrbyAdditive:ZAP-SDK-Android:1748d00")
 
     // Testing
     testImplementation(libs.junit)
