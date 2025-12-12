@@ -77,7 +77,7 @@ dependencies {
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
     // ZAP SDK for firmware updates
-    implementation("com.github.FyrbyAdditive:ZAP-SDK-Android:1748d00")
+    implementation("com.github.FyrbyAdditive:ZAP-SDK-Android:1.0.4")
 
     // Testing
     testImplementation(libs.junit)
