@@ -9,6 +9,10 @@ struct UpdateInfo {
     let requiredAppVersion: String?
     let canFlash: Bool
     let requiredFirmwareVersion: String?
+    /// True if app is too new to flash this firmware (maxAppVersionFlash exceeded)
+    let appTooNewToFlash: Bool
+    /// The maximum app version allowed to flash (if app is too new)
+    let maxAppVersionFlash: String?
 }
 
 /// Service for checking and downloading firmware updates via ZAP
@@ -45,12 +49,25 @@ class FirmwareUpdateService {
         // Check if current app meets minimum requirement to flash this firmware
         // The SDK provides minAppVersionFlash for the minimum iOS app version to flash
         let minFlashVersion = latestFirmware.minAppVersionFlash
-        let canFlash: Bool
+        let appTooOldToFlash: Bool
         if let required = minFlashVersion {
-            canFlash = isVersionAtLeast(version: currentAppVersion, required: required)
+            appTooOldToFlash = !isVersionAtLeast(version: currentAppVersion, required: required)
         } else {
-            canFlash = true
+            appTooOldToFlash = false
         }
+
+        // Check if current app exceeds maximum allowed version to flash this firmware
+        // The SDK provides maxAppVersionFlash for the maximum iOS app version that can flash
+        let maxFlashVersion = latestFirmware.maxAppVersionFlash
+        let appTooNewToFlash: Bool
+        if let maxAllowed = maxFlashVersion {
+            appTooNewToFlash = !isVersionAtMost(version: currentAppVersion, maxAllowed: maxAllowed)
+        } else {
+            appTooNewToFlash = false
+        }
+
+        // Can only flash if app is not too old AND not too new
+        let canFlash = !appTooOldToFlash && !appTooNewToFlash
 
         // Check if app update will be required after flashing (to run the new firmware)
         // The SDK provides minAppVersionRun for the minimum app version needed to run the firmware
@@ -65,7 +82,7 @@ class FirmwareUpdateService {
         // requiredFirmwareVersion is no longer directly available in SDK v1.0.1
         let requiredFirmwareVersion: String? = nil
 
-        print("[FirmwareUpdate] Update available: \(latestFirmware.version), canFlash=\(canFlash), requiresAppUpdate=\(requiresAppUpdate)")
+        print("[FirmwareUpdate] Update available: \(latestFirmware.version), canFlash=\(canFlash), appTooOld=\(appTooOldToFlash), appTooNew=\(appTooNewToFlash), requiresAppUpdate=\(requiresAppUpdate)")
 
         return UpdateInfo(
             version: latestFirmware.version,
@@ -73,7 +90,9 @@ class FirmwareUpdateService {
             requiresAppUpdate: requiresAppUpdate,
             requiredAppVersion: minRunVersion,
             canFlash: canFlash,
-            requiredFirmwareVersion: requiredFirmwareVersion
+            requiredFirmwareVersion: requiredFirmwareVersion,
+            appTooNewToFlash: appTooNewToFlash,
+            maxAppVersionFlash: maxFlashVersion
         )
     }
 
@@ -136,6 +155,23 @@ class FirmwareUpdateService {
 
             if vPart > rPart { return true }
             if vPart < rPart { return false }
+        }
+
+        return true // Equal versions
+    }
+
+    /// Check if `version` is at most `maxAllowed` (i.e., version <= maxAllowed)
+    private func isVersionAtMost(version: String, maxAllowed: String) -> Bool {
+        let versionParts = parseVersion(version)
+        let maxParts = parseVersion(maxAllowed)
+
+        let maxCount = max(versionParts.count, maxParts.count)
+        for i in 0..<maxCount {
+            let vPart = i < versionParts.count ? versionParts[i] : 0
+            let mPart = i < maxParts.count ? maxParts[i] : 0
+
+            if vPart < mPart { return true }
+            if vPart > mPart { return false }
         }
 
         return true // Equal versions

@@ -272,13 +272,25 @@ struct DeviceSettingsView: View {
                                 }
                             }
 
-                            // Warning if cannot flash
-                            if !update.canFlash, let requiredFirmware = update.requiredFirmwareVersion {
+                            // Warning if cannot flash due to app too old
+                            if !update.canFlash && !update.appTooNewToFlash, let requiredFirmware = update.requiredFirmwareVersion {
                                 HStack(spacing: 4) {
                                     Image(systemName: "xmark.circle.fill")
                                         .font(.caption)
                                         .foregroundColor(.red)
                                     Text("Requires firmware \(requiredFirmware) or later first")
+                                        .font(.caption)
+                                        .foregroundColor(.red)
+                                }
+                            }
+
+                            // Warning if cannot flash due to app too new
+                            if update.appTooNewToFlash, let maxVersion = update.maxAppVersionFlash {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.caption)
+                                        .foregroundColor(.red)
+                                    Text("This app is too new (max \(maxVersion)). Downgrade required.")
                                         .font(.caption)
                                         .foregroundColor(.red)
                                 }
