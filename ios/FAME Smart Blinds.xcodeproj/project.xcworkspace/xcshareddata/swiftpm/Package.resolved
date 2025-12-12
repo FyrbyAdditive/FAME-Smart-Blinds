@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/FyrbyAdditive/ZAP-SDK-iOS",
       "state" : {
-        "revision" : "d5ab6cad09466f072f052e028dd3e75bebe4e495",
-        "version" : "1.0.2"
+        "revision" : "f30ae993ecdd0f44466f864fa60a939b0f1a77b2",
+        "version" : "1.0.3"
       }
     }
   ],
