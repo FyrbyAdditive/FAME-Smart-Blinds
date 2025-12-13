@@ -395,8 +395,8 @@ fun SettingsScreen(
                             }
                         }
 
-                        // Warning if cannot flash
-                        if (availableUpdate?.canFlash == false) {
+                        // Warning if cannot flash due to app too old
+                        if (availableUpdate?.canFlash == false && availableUpdate?.appTooNewToFlash != true) {
                             Spacer(Modifier.height(8.dp))
                             Row(
                                 verticalAlignment = Alignment.CenterVertically
@@ -410,6 +410,27 @@ fun SettingsScreen(
                                 Spacer(Modifier.width(4.dp))
                                 Text(
                                     text = "Requires firmware ${availableUpdate?.requiredFirmwareVersion} or later first",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+
+                        // Warning if cannot flash due to app too new
+                        if (availableUpdate?.appTooNewToFlash == true) {
+                            Spacer(Modifier.height(8.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Block,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text = "This app is too new (max ${availableUpdate?.maxAppVersionFlash}). Downgrade required.",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.error
                                 )

@@ -16,7 +16,11 @@ data class UpdateInfo(
     val requiresAppUpdate: Boolean,
     val requiredAppVersion: String?,
     val canFlash: Boolean,
-    val requiredFirmwareVersion: String?
+    val requiredFirmwareVersion: String?,
+    /** True if app is too new to flash this firmware (maxAppVersionFlash exceeded) */
+    val appTooNewToFlash: Boolean,
+    /** The maximum app version allowed to flash (if app is too new) */
+    val maxAppVersionFlash: String?
 )
 
 /**
@@ -59,9 +63,18 @@ class FirmwareUpdateManager @Inject constructor() {
 
             // Check if current app meets minimum requirement to flash this firmware
             val minFlashVersion = latestFirmware.minAppVersionFlash
-            val canFlash = minFlashVersion?.let { required ->
-                isVersionAtLeast(currentAppVersion, required)
-            } ?: true
+            val appTooOldToFlash = minFlashVersion?.let { required ->
+                !isVersionAtLeast(currentAppVersion, required)
+            } ?: false
+
+            // Check if current app exceeds maximum allowed version to flash this firmware
+            val maxFlashVersion = latestFirmware.maxAppVersionFlash
+            val appTooNewToFlash = maxFlashVersion?.let { maxAllowed ->
+                !isVersionAtMost(currentAppVersion, maxAllowed)
+            } ?: false
+
+            // Can only flash if app is not too old AND not too new
+            val canFlash = !appTooOldToFlash && !appTooNewToFlash
 
             // Check if app update will be required after flashing (to run the new firmware)
             val minRunVersion = latestFirmware.minAppVersionRun
@@ -69,7 +82,7 @@ class FirmwareUpdateManager @Inject constructor() {
                 !isVersionAtLeast(currentAppVersion, required)
             } ?: false
 
-            Log.d(TAG, "Update available: ${latestFirmware.version}, canFlash=$canFlash, requiresAppUpdate=$requiresAppUpdate")
+            Log.d(TAG, "Update available: ${latestFirmware.version}, canFlash=$canFlash, appTooOld=$appTooOldToFlash, appTooNew=$appTooNewToFlash, requiresAppUpdate=$requiresAppUpdate")
 
             UpdateInfo(
                 version = latestFirmware.version,
@@ -77,7 +90,9 @@ class FirmwareUpdateManager @Inject constructor() {
                 requiresAppUpdate = requiresAppUpdate,
                 requiredAppVersion = minRunVersion,
                 canFlash = canFlash,
-                requiredFirmwareVersion = minFlashVersion
+                requiredFirmwareVersion = minFlashVersion,
+                appTooNewToFlash = appTooNewToFlash,
+                maxAppVersionFlash = maxFlashVersion
             )
         } catch (e: NotFoundException) {
             Log.w(TAG, "No firmware found for product: $PRODUCT_SLUG")
@@ -150,6 +165,24 @@ class FirmwareUpdateManager @Inject constructor() {
 
             if (vPart > rPart) return true
             if (vPart < rPart) return false
+        }
+
+        return true // Equal versions
+    }
+
+    /**
+     * Check if `version` is at most `maxAllowed` (i.e., version <= maxAllowed).
+     */
+    private fun isVersionAtMost(version: String, maxAllowed: String): Boolean {
+        val versionParts = parseVersion(version)
+        val maxParts = parseVersion(maxAllowed)
+
+        for (i in 0 until maxOf(versionParts.size, maxParts.size)) {
+            val vPart = versionParts.getOrElse(i) { 0 }
+            val mPart = maxParts.getOrElse(i) { 0 }
+
+            if (vPart < mPart) return true
+            if (vPart > mPart) return false
         }
 
         return true // Equal versions
